@@ -401,7 +401,7 @@ class LotteryApp(QMainWindow):
         try:
             record = {
                 'type': 'prediction',
-                'title': f'Prediction {self.record_manager.load_records() or 1}',
+                'title': f'Prediction {len(self.record_manager.get_all_records()) + 1}',
                 'description': 'Generated prediction',
                 'data': {
                     'prediction_text': prediction_text,

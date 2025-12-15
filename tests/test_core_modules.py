@@ -230,7 +230,9 @@ def test_password_generator():
     assert len(password) == 16  # Default length
     assert any(c.isupper() for c in password)  # Has uppercase
     assert any(c.isdigit() for c in password)  # Has digits
-    assert any(c in '!@#$%^&*()_+-=[]{}|;:,.<>?' for c in password)  # Has special chars
+    
+    import string
+    assert any(c in string.punctuation for c in password)  # Has special chars
     
     # Test custom length
     password = generator.generate(length=20)
@@ -240,6 +242,10 @@ def test_password_generator():
     passwords = generator.generate_multiple(count=5)
     assert len(passwords) == 5
     assert len(set(passwords)) == 5  # All unique
+    
+    # Test minimum length handling
+    short_password = generator.generate(length=2)
+    assert len(short_password) >= 4  # Should be adjusted to minimum
     
     print("✓ PasswordGenerator tests passed")
 
