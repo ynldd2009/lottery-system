@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}首页 - 彩票分析预测系统{% endblock %}
+
+{% block content %}
+<div class="hero">
+    <h1>🎰 彩票分析预测系统</h1>
+    <p class="subtitle">支持电脑和手机访问的智能彩票分析平台</p>
+</div>
+
+<div class="features-grid">
+    <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <h3>数据分析</h3>
+        <p>频率分析、冷热号码、模式检测</p>
+        <a href="/analysis" class="btn btn-primary">开始分析</a>
+    </div>
+
+    <div class="feature-card">
+        <div class="feature-icon">🔮</div>
+        <h3>智能预测</h3>
+        <p>7种统计模型，集成预测算法</p>
+        <a href="/prediction" class="btn btn-primary">生成预测</a>
+    </div>
+
+    <div class="feature-card">
+        <div class="feature-icon">💾</div>
+        <h3>数据管理</h3>
+        <p>导入导出CSV、JSON、Excel</p>
+        <a href="/data" class="btn btn-primary">管理数据</a>
+    </div>
+
+    <div class="feature-card">
+        <div class="feature-icon">🛠️</div>
+        <h3>实用工具</h3>
+        <p>密码生成、记录管理</p>
+        <a href="/utilities" class="btn btn-primary">使用工具</a>
+    </div>
+</div>
+
+<div class="info-section">
+    <h2>支持的彩票类型</h2>
+    <div class="lottery-types">
+        {% for lottery_type in lottery_types %}
+        <span class="badge">{{ lottery_type }}</span>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="info-section">
+    <h2>预测模型</h2>
+    <div class="models-list">
+        <ul>
+            <li><strong>频率分析</strong> - 基于历史出现频率</li>
+            <li><strong>冷热号码</strong> - 识别热号和冷号</li>
+            <li><strong>模式平衡</strong> - 奇偶、高低平衡</li>
+            <li><strong>加权频率</strong> - 近期数据加权</li>
+            <li><strong>间隔分析</strong> - 预测"到期"号码</li>
+            <li><strong>移动平均</strong> - 趋势分析</li>
+            <li><strong>周期模式</strong> - 周期检测</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

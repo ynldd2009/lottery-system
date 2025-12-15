@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}数据管理 - 彩票分析预测系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>💾 数据管理</h1>
+    <p>导入、导出和管理彩票数据</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>生成数据</h2>
+    </div>
+    <div class="card-body">
+        <div class="form-group">
+            <label>数据条数:</label>
+            <input type="number" id="numDraws" class="form-control" value="100" min="10" max="1000">
+        </div>
+        <button id="generateBtn" class="btn btn-primary">生成样本数据</button>
+        <span id="generateStatus" class="status-text"></span>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>导入数据</h2>
+    </div>
+    <div class="card-body">
+        <p>支持CSV、JSON和Excel格式</p>
+        <input type="file" id="fileInput" class="form-control" accept=".csv,.json,.xlsx,.xls">
+        <button id="importBtn" class="btn btn-success">导入文件</button>
+        <span id="importStatus" class="status-text"></span>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>数据信息</h2>
+    </div>
+    <div class="card-body">
+        <div id="dataInfo" class="info-text">暂无数据</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('generateBtn').addEventListener('click', async function() {
+    this.disabled = true;
+    this.textContent = '生成中...';
+    
+    const numDraws = parseInt(document.getElementById('numDraws').value);
+    
+    try {
+        const response = await fetch('/api/generate-sample-data', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({num_draws: numDraws})
+        });
+        
+        const data = await response.json();
+        const statusEl = document.getElementById('generateStatus');
+        
+        if (data.success) {
+            statusEl.textContent = `✓ 已生成 ${data.count} 条数据`;
+            statusEl.className = 'status-text success';
+            updateDataInfo(data.count, data.data);
+        } else {
+            statusEl.textContent = `✗ 生成失败: ${data.error}`;
+            statusEl.className = 'status-text error';
+        }
+    } catch (error) {
+        alert('错误: ' + error.message);
+    } finally {
+        this.disabled = false;
+        this.textContent = '生成样本数据';
+    }
+});
+
+document.getElementById('importBtn').addEventListener('click', async function() {
+    const fileInput = document.getElementById('fileInput');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        alert('请选择文件');
+        return;
+    }
+    
+    this.disabled = true;
+    this.textContent = '导入中...';
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+        const response = await fetch('/api/import-data', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        const statusEl = document.getElementById('importStatus');
+        
+        if (data.success) {
+            statusEl.textContent = `✓ 已导入 ${data.count} 条数据`;
+            statusEl.className = 'status-text success';
+            updateDataInfo(data.count, data.data);
+        } else {
+            statusEl.textContent = `✗ 导入失败: ${data.error}`;
+            statusEl.className = 'status-text error';
+        }
+    } catch (error) {
+        alert('错误: ' + error.message);
+    } finally {
+        this.disabled = false;
+        this.textContent = '导入文件';
+    }
+});
+
+function updateDataInfo(count, sampleData) {
+    const infoEl = document.getElementById('dataInfo');
+    
+    let html = `<p><strong>总数据量:</strong> ${count} 条</p>`;
+    
+    if (sampleData && sampleData.length > 0) {
+        html += '<p><strong>数据示例 (前10条):</strong></p>';
+        html += '<div class="data-preview">';
+        sampleData.forEach((draw, index) => {
+            html += `<div class="draw-item">`;
+            html += `<span class="draw-number">#${index + 1}</span>`;
+            html += `<span class="draw-numbers">[${draw.join(', ')}]</span>`;
+            html += `</div>`;
+        });
+        html += '</div>';
+    }
+    
+    infoEl.innerHTML = html;
+}
+</script>
+{% endblock %}

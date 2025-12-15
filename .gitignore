@@ -43,6 +43,7 @@ htmlcov/
 # Logs
 *.log
 logs/
+lottery_web.log
 
 # User data
 .lottery_system/
@@ -57,3 +58,12 @@ temp/
 *.jpg
 *.jpeg
 *.gif
+
+# Flask
+instance/
+.webassets-cache
+
+# Database
+*.db
+*.sqlite
+*.sqlite3

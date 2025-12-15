@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}实用工具 - 彩票分析预测系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🛠️ 实用工具</h1>
+    <p>密码生成器和记录管理</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>密码生成器</h2>
+    </div>
+    <div class="card-body">
+        <div class="form-group">
+            <label>密码长度:</label>
+            <input type="number" id="passwordLength" class="form-control" value="16" min="8" max="32">
+        </div>
+        
+        <div class="checkbox-group">
+            <label><input type="checkbox" id="useUppercase" checked> 大写字母 (A-Z)</label>
+            <label><input type="checkbox" id="useLowercase" checked> 小写字母 (a-z)</label>
+            <label><input type="checkbox" id="useDigits" checked> 数字 (0-9)</label>
+            <label><input type="checkbox" id="useSpecial" checked> 特殊字符 (!@#$...)</label>
+        </div>
+        
+        <button id="generatePasswordBtn" class="btn btn-primary">生成密码</button>
+        
+        <div id="passwordResult" class="password-result"></div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>预测记录</h2>
+    </div>
+    <div class="card-body">
+        <button id="loadRecordsBtn" class="btn btn-secondary">加载记录</button>
+        
+        <div id="recordsList" class="records-list"></div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>添加新记录</h2>
+    </div>
+    <div class="card-body">
+        <div class="form-group">
+            <label>标题:</label>
+            <input type="text" id="recordTitle" class="form-control" placeholder="例如: 2024-01-15预测">
+        </div>
+        
+        <div class="form-group">
+            <label>号码 (用逗号分隔):</label>
+            <input type="text" id="recordNumbers" class="form-control" placeholder="例如: 1,5,12,23,34,45">
+        </div>
+        
+        <div class="form-group">
+            <label>备注:</label>
+            <textarea id="recordNotes" class="form-control" rows="3" placeholder="可选备注信息"></textarea>
+        </div>
+        
+        <button id="addRecordBtn" class="btn btn-success">添加记录</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('generatePasswordBtn').addEventListener('click', async function() {
+    const length = parseInt(document.getElementById('passwordLength').value);
+    const useUppercase = document.getElementById('useUppercase').checked;
+    const useLowercase = document.getElementById('useLowercase').checked;
+    const useDigits = document.getElementById('useDigits').checked;
+    const useSpecial = document.getElementById('useSpecial').checked;
+    
+    try {
+        const response = await fetch('/api/generate-password', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                length: length,
+                use_uppercase: useUppercase,
+                use_lowercase: useLowercase,
+                use_digits: useDigits,
+                use_special: useSpecial
+            })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            const resultEl = document.getElementById('passwordResult');
+            resultEl.innerHTML = `<div class="password-display">
+                <input type="text" value="${data.password}" readonly class="password-text">
+                <button onclick="copyPassword('${data.password}')" class="btn btn-small">复制</button>
+            </div>`;
+        } else {
+            alert('生成失败: ' + data.error);
+        }
+    } catch (error) {
+        alert('错误: ' + error.message);
+    }
+});
+
+function copyPassword(password) {
+    navigator.clipboard.writeText(password).then(() => {
+        alert('密码已复制到剪贴板');
+    });
+}
+
+document.getElementById('loadRecordsBtn').addEventListener('click', async function() {
+    try {
+        const response = await fetch('/api/records');
+        const data = await response.json();
+        
+        if (data.success) {
+            displayRecords(data.records);
+        } else {
+            alert('加载失败: ' + data.error);
+        }
+    } catch (error) {
+        alert('错误: ' + error.message);
+    }
+});
+
+function displayRecords(records) {
+    const container = document.getElementById('recordsList');
+    
+    if (records.length === 0) {
+        container.innerHTML = '<p class="empty-message">暂无记录</p>';
+        return;
+    }
+    
+    let html = '<div class="records-container">';
+    records.forEach(record => {
+        html += `<div class="record-item">
+            <div class="record-header">
+                <h4>${record.title}</h4>
+                <button onclick="deleteRecord('${record.id}')" class="btn btn-danger btn-small">删除</button>
+            </div>
+            <div class="record-body">
+                <p><strong>号码:</strong> ${record.numbers.join(', ')}</p>
+                ${record.notes ? `<p><strong>备注:</strong> ${record.notes}</p>` : ''}
+                <p class="record-date">${record.timestamp}</p>
+            </div>
+        </div>`;
+    });
+    html += '</div>';
+    
+    container.innerHTML = html;
+}
+
+async function deleteRecord(recordId) {
+    if (!confirm('确定要删除这条记录吗?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/records/${recordId}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            alert('删除成功');
+            document.getElementById('loadRecordsBtn').click();
+        } else {
+            alert('删除失败: ' + data.error);
+        }
+    } catch (error) {
+        alert('错误: ' + error.message);
+    }
+}
+
+document.getElementById('addRecordBtn').addEventListener('click', async function() {
+    const title = document.getElementById('recordTitle').value;
+    const numbersStr = document.getElementById('recordNumbers').value;
+    const notes = document.getElementById('recordNotes').value;
+    
+    if (!title || !numbersStr) {
+        alert('请填写标题和号码');
+        return;
+    }
+    
+    const numbers = numbersStr.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n));
+    
+    if (numbers.length === 0) {
+        alert('请输入有效的号码');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/records', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                title: title,
+                numbers: numbers,
+                notes: notes
+            })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            alert('添加成功');
+            document.getElementById('recordTitle').value = '';
+            document.getElementById('recordNumbers').value = '';
+            document.getElementById('recordNotes').value = '';
+            document.getElementById('loadRecordsBtn').click();
+        } else {
+            alert('添加失败: ' + data.error);
+        }
+    } catch (error) {
+        alert('错误: ' + error.message);
+    }
+});
+</script>
+{% endblock %}
