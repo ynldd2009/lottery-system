@@ -1,34 +1,93 @@
 # Lottery Analysis and Prediction System
 
-A cross-platform lottery analysis and prediction system built with Python that runs on both PC and Android platforms.
+A comprehensive lottery analysis and prediction system built with Python. **Now accessible from both computers and mobile phones via Web interface!**
 
-## Features
+## ✨ Features
 
-### Core Functionalities
-- **Data Analysis and Statistics**: Comprehensive statistical analysis of lottery data including frequency analysis, hot/cold numbers, and pattern detection
-- **Prediction Tools**: Multi-algorithm prediction engine using frequency analysis, hot/cold number analysis, and pattern-based predictions
+### 🌐 Multi-Platform Access
+- **Web Interface**: Access from any device - computer, phone, tablet
+- **Desktop GUI**: Full-featured PySide6 application for Windows/macOS/Linux  
+- **Mobile Optimized**: Responsive design for smartphones
+- **Cross-Device**: Seamless experience across all platforms
+
+### 🎰 Lottery Support
+- **Chinese Sports Lottery**: 大乐透, 七星彩, 排列三, 排列五
+- **General Lottery**: Configurable for any lottery type
+- **Type-Specific Predictions**: Optimized for each lottery format
+
+### 📊 Core Functionalities
+- **Data Analysis**: Frequency analysis, hot/cold numbers, pattern detection
+- **7 Prediction Algorithms**: 
+  - Frequency-based prediction
+  - Hot/cold number analysis
+  - Pattern-balanced prediction
+  - Weighted frequency (recent data weighted)
+  - Gap analysis (predict "due" numbers)
+  - Moving average (trend-based)
+  - Cyclic pattern detection
+- **Ensemble Prediction**: Combines all algorithms with confidence scoring
 - **Record Management**: Add, edit, remove, and share prediction records
-- **Automatic Password Generator**: Generate strong, secure passwords automatically
-- **Data Visualization**: Create charts and graphs to visualize lottery statistics
+- **Password Generator**: Strong, configurable passwords
+- **Data Visualization**: Charts and graphs for analysis
 
-### System Components
-- **Configuration Management**: Flexible configuration system with JSON-based settings
-- **Data Handling**: Import/export data in CSV, JSON, and Excel formats
-- **Custom UI Components**: 
-  - NumberButton for interactive number selection
-  - Main LotteryApp window with tabbed interface
-  - Integrated visualization tools
+### 💾 Data Handling
+- **Import/Export**: CSV, JSON, Excel formats
+- **Sample Data**: Built-in sample data generator
+- **Flexible Configuration**: JSON-based settings
 
-### User Interface
-- Intuitive GUI built with PySide6
-- Tabbed interface for different functionalities:
+### 🎨 User Interface
+- **Web UI**: Modern, responsive design for all devices
+- **Desktop GUI**: PySide6 tabbed interface
   - Analysis tab for statistical analysis
   - Prediction tab for generating predictions
   - Data Management tab for importing/exporting data
-  - Utilities tab for password generation and record management
-- Menu system with File, Tools, and Help menus
+  - Utilities tab for tools and records
+- **Menu System**: File, Tools, and Help menus
 
-## Installation
+## 🚀 Quick Start
+
+### Option 1: Web Interface (Recommended)
+
+**Perfect for mobile access!**
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Start web server
+python web_app.py
+```
+
+**Access the system:**
+- **From Computer**: Open browser to `http://localhost:5000`
+- **From Mobile**: Open browser to `http://[your-computer-ip]:5000`
+
+Or use convenient startup scripts:
+```bash
+./start_web.sh        # Linux/Mac
+start_web.bat         # Windows
+```
+
+See [WEB_DEPLOYMENT.md](WEB_DEPLOYMENT.md) for detailed deployment guide.
+
+### Option 2: Desktop GUI
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Run desktop application
+python main.py
+```
+
+### Option 3: CLI Demo
+
+```bash
+# Run command-line demo
+python demo_cli.py
+```
+
+## 📥 Installation
 
 ### Prerequisites
 - Python 3.8 or higher
@@ -39,12 +98,7 @@ A cross-platform lottery analysis and prediction system built with Python that r
 pip install -r requirements.txt
 ```
 
-## Usage
-
-### Running the Application
-```bash
-python main.py
-```
+## 📖 Usage
 
 ### Quick Start Guide
 

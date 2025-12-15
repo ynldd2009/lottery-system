@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}智能预测 - 彩票分析预测系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🔮 智能预测</h1>
+    <p>使用7种统计模型生成彩票预测</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>预测设置</h2>
+    </div>
+    <div class="card-body">
+        <div class="form-group">
+            <label>彩票类型:</label>
+            <select id="lotteryType" class="form-control">
+                {% for lottery_type in lottery_types %}
+                <option value="{{ lottery_type }}">{{ lottery_type }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>预测算法:</label>
+            <select id="algorithm" class="form-control">
+                <option value="ensemble">集成预测 (推荐)</option>
+                <option value="frequency">频率分析</option>
+                <option value="hot_cold">冷热号码</option>
+                <option value="pattern">模式平衡</option>
+                <option value="weighted_frequency">加权频率</option>
+                <option value="gap_analysis">间隔分析</option>
+                <option value="moving_average">移动平均</option>
+                <option value="cyclic_pattern">周期模式</option>
+            </select>
+        </div>
+        
+        <button id="predictBtn" class="btn btn-primary">生成预测</button>
+        <button id="predictAllBtn" class="btn btn-secondary">所有算法预测</button>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>预测结果</h2>
+    </div>
+    <div class="card-body">
+        <div id="predictionResults" class="results-container"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('predictBtn').addEventListener('click', async function() {
+    this.disabled = true;
+    this.textContent = '预测中...';
+    
+    const lotteryType = document.getElementById('lotteryType').value;
+    const algorithm = document.getElementById('algorithm').value;
+    
+    try {
+        const response = await fetch('/api/predict', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({lottery_type: lotteryType, algorithm: algorithm})
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            displayPrediction(data.prediction);
+        } else {
+            alert('预测失败: ' + data.error);
+        }
+    } catch (error) {
+        alert('错误: ' + error.message);
+    } finally {
+        this.disabled = false;
+        this.textContent = '生成预测';
+    }
+});
+
+document.getElementById('predictAllBtn').addEventListener('click', async function() {
+    this.disabled = true;
+    this.textContent = '预测中...';
+    
+    const lotteryType = document.getElementById('lotteryType').value;
+    
+    try {
+        const response = await fetch('/api/predict-all-algorithms', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({lottery_type: lotteryType})
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            displayAllPredictions(data.predictions);
+        } else {
+            alert('预测失败: ' + data.error);
+        }
+    } catch (error) {
+        alert('错误: ' + error.message);
+    } finally {
+        this.disabled = false;
+        this.textContent = '所有算法预测';
+    }
+});
+
+function displayPrediction(prediction) {
+    const container = document.getElementById('predictionResults');
+    
+    let html = '<div class="prediction-box">';
+    
+    if (prediction.formatted) {
+        html += `<h3>预测号码</h3>`;
+        html += `<div class="prediction-numbers">${prediction.formatted}</div>`;
+    } else if (prediction.numbers) {
+        html += `<h3>预测号码</h3>`;
+        html += '<div class="number-list">';
+        prediction.numbers.forEach(num => {
+            html += `<span class="badge badge-large">${num}</span>`;
+        });
+        html += '</div>';
+    }
+    
+    if (prediction.confidence) {
+        html += `<p class="confidence">置信度: ${(prediction.confidence * 100).toFixed(1)}%</p>`;
+    }
+    
+    if (prediction.algorithm) {
+        html += `<p class="algorithm">算法: ${prediction.algorithm}</p>`;
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function displayAllPredictions(predictions) {
+    const container = document.getElementById('predictionResults');
+    
+    let html = '<div class="predictions-grid">';
+    
+    const algorithmNames = {
+        'frequency': '频率分析',
+        'hot_cold': '冷热号码',
+        'pattern': '模式平衡',
+        'weighted_frequency': '加权频率',
+        'gap_analysis': '间隔分析',
+        'moving_average': '移动平均',
+        'cyclic_pattern': '周期模式',
+        'ensemble': '集成预测'
+    };
+    
+    for (const [algo, prediction] of Object.entries(predictions)) {
+        html += '<div class="prediction-card">';
+        html += `<h4>${algorithmNames[algo] || algo}</h4>`;
+        
+        if (prediction.error) {
+            html += `<p class="error">${prediction.error}</p>`;
+        } else if (prediction.formatted) {
+            html += `<div class="prediction-numbers-small">${prediction.formatted}</div>`;
+            if (prediction.confidence) {
+                html += `<p class="confidence-small">置信度: ${(prediction.confidence * 100).toFixed(1)}%</p>`;
+            }
+        } else if (prediction.numbers) {
+            html += '<div class="number-list-small">';
+            prediction.numbers.slice(0, 6).forEach(num => {
+                html += `<span class="badge badge-small">${num}</span>`;
+            });
+            html += '</div>';
+        }
+        
+        html += '</div>';
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+</script>
+{% endblock %}
