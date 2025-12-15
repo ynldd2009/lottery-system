@@ -39,6 +39,17 @@ class PasswordGenerator:
         if length is None:
             length = self.length
         
+        # Ensure minimum length for character requirements
+        min_length = sum([
+            1,  # Always at least one lowercase
+            1 if self.include_uppercase else 0,
+            1 if self.include_numbers else 0,
+            1 if self.include_special else 0
+        ])
+        
+        if length < min_length:
+            length = min_length
+        
         # Build character set based on configuration
         chars = string.ascii_lowercase
         
@@ -68,7 +79,8 @@ class PasswordGenerator:
         
         # Fill the rest with random characters from the full set
         remaining_length = length - len(password)
-        password.extend(random.choices(chars, k=remaining_length))
+        if remaining_length > 0:
+            password.extend(random.choices(chars, k=remaining_length))
         
         # Shuffle to avoid predictable patterns
         random.shuffle(password)
