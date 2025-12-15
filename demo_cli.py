@@ -79,10 +79,16 @@ def demo_prediction(data):
     """Demonstrate prediction capabilities."""
     print_section("Prediction Demo")
     
-    engine = PredictionEngine()
+    # Load config to get all algorithms
+    config = ConfigManager()
+    engine = PredictionEngine(config.config.get('prediction', {}))
     engine.load_historical_data(data)
     
     print("\n1. Generating predictions using different algorithms...")
+    
+    # Original algorithms
+    print("\n   Original Algorithms:")
+    print("   -------------------")
     
     # Frequency-based prediction
     print("\n   a) Frequency-based prediction:")
@@ -99,6 +105,30 @@ def demo_prediction(data):
     pattern_pred = engine.predict_by_pattern(count=6, number_range=(1, 49))
     print(f"      {pattern_pred}")
     
+    # New statistical models
+    print("\n   New Statistical Models:")
+    print("   ----------------------")
+    
+    # Weighted frequency
+    print("\n   d) Weighted frequency (recent draws weighted more):")
+    weighted_pred = engine.predict_by_weighted_frequency(count=6, number_range=(1, 49))
+    print(f"      {weighted_pred}")
+    
+    # Gap analysis
+    print("\n   e) Gap analysis (numbers 'due' to appear):")
+    gap_pred = engine.predict_by_gap_analysis(count=6, number_range=(1, 49))
+    print(f"      {gap_pred}")
+    
+    # Moving average
+    print("\n   f) Moving average (trend-based):")
+    ma_pred = engine.predict_by_moving_average(count=6, number_range=(1, 49))
+    print(f"      {ma_pred}")
+    
+    # Cyclic pattern
+    print("\n   g) Cyclic pattern (cycle detection):")
+    cyclic_pred = engine.predict_by_cyclic_pattern(count=6, number_range=(1, 49))
+    print(f"      {cyclic_pred}")
+    
     # Combined prediction with confidence
     print("\n2. Generating ensemble prediction with confidence score...")
     result = engine.generate_prediction_with_confidence(count=6, number_range=(1, 49))
@@ -106,7 +136,8 @@ def demo_prediction(data):
     print(f"\n   Recommended numbers: {result['recommended']}")
     print(f"   Confidence level: {result['confidence']:.1%}")
     print(f"   Based on {result['data_points_used']} historical draws")
-    print(f"   Algorithms used: {', '.join(result['algorithms_used'])}")
+    print(f"   Algorithms used: {len(result['algorithms_used'])} models")
+    print(f"   Models: {', '.join(result['algorithms_used'])}")
 
 
 def demo_password_generator():
