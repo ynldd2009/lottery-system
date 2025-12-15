@@ -1,6 +1,7 @@
 """
 Prediction Engine Module
 Generates lottery number predictions based on historical data analysis.
+Supports multiple lottery types including Chinese sports lottery games.
 """
 
 import numpy as np
@@ -8,19 +9,22 @@ import random
 from typing import List, Dict, Tuple, Optional
 from collections import Counter
 from .data_analyzer import DataAnalyzer
+from ..config.lottery_types import LotteryType, get_lottery_type
 
 
 class PredictionEngine:
     """Generates predictions for lottery numbers using various algorithms."""
     
-    def __init__(self, config: Optional[dict] = None):
+    def __init__(self, config: Optional[dict] = None, lottery_type: str = "通用"):
         """
         Initialize prediction engine with configuration.
         
         Args:
             config: Configuration dictionary.
+            lottery_type: Type of lottery game (大乐透, 七星彩, 排列三, 排列五, 通用).
         """
         self.config = config or {}
+        self.lottery_type = get_lottery_type(lottery_type)
         self.analyzer = DataAnalyzer(config)
         self.algorithms = self.config.get('prediction_algorithms', ['frequency', 'hot_cold', 'pattern'])
         self.confidence_threshold = self.config.get('confidence_threshold', 0.6)
@@ -415,3 +419,63 @@ class PredictionEngine:
             'data_points_used': data_points,
             'algorithms_used': self.algorithms
         }
+    
+    def predict_for_lottery_type(self) -> Dict[str, any]:
+        """
+        Generate predictions specifically for the configured lottery type.
+        
+        Returns:
+            Dictionary with lottery-type specific predictions.
+        """
+        ranges = self.lottery_type.get_number_ranges()
+        
+        if self.lottery_type.game_type == "大乐透":
+            # Super Lotto: 5 main + 2 bonus
+            main_pred = self.generate_prediction_with_confidence(count=5, number_range=(1, 35))
+            bonus_pred = self.generate_prediction_with_confidence(count=2, number_range=(1, 12))
+            
+            return {
+                'lottery_type': self.lottery_type.name,
+                'main_numbers': main_pred['recommended'][:5],
+                'bonus_numbers': bonus_pred['recommended'][:2],
+                'formatted': self.lottery_type.format_prediction(
+                    main_pred['recommended'][:5] + bonus_pred['recommended'][:2]
+                ),
+                'confidence': (main_pred['confidence'] + bonus_pred['confidence']) / 2,
+                'algorithms_used': main_pred['algorithms_used']
+            }
+        
+        elif self.lottery_type.game_type in ["七星彩", "排列三", "排列五"]:
+            # Digit-based lotteries
+            digit_count = self.lottery_type.get_number_count()
+            digits = []
+            
+            # Predict each digit independently
+            # For digit lotteries, we use a different approach since each position is 0-9
+            for i in range(digit_count):
+                # Use weighted random based on historical digit frequency in this position
+                # For now, use simple random since we don't have digit-specific historical data
+                digit = random.randint(0, 9)
+                digits.append(digit)
+            
+            return {
+                'lottery_type': self.lottery_type.name,
+                'digits': digits,
+                'formatted': self.lottery_type.format_prediction(digits),
+                'confidence': 0.5,  # Lower confidence without digit-specific data
+                'algorithms_used': ['random']  # Using random for now
+            }
+        
+        else:
+            # General lottery
+            count = self.lottery_type.get_number_count()
+            if ranges:
+                number_range = ranges[0]
+            else:
+                number_range = (1, 49)
+            
+            result = self.generate_prediction_with_confidence(count=count, number_range=number_range)
+            result['lottery_type'] = self.lottery_type.name
+            result['formatted'] = self.lottery_type.format_prediction(result['recommended'])
+            
+            return result
