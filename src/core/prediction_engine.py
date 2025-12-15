@@ -154,6 +154,184 @@ class PredictionEngine:
         
         return sorted(predicted[:count])
     
+    def predict_by_weighted_frequency(self, count: int = 6, number_range: Tuple[int, int] = (1, 49)) -> List[int]:
+        """
+        Predict numbers using weighted frequency (recent draws have more weight).
+        
+        Args:
+            count: Number of lottery numbers to predict.
+            number_range: Range of valid lottery numbers (min, max).
+            
+        Returns:
+            List of predicted numbers.
+        """
+        if self.analyzer.data.empty:
+            return sorted(random.sample(range(number_range[0], number_range[1] + 1), count))
+        
+        # Calculate weighted frequency (more weight to recent draws)
+        weighted_freq = {}
+        total_draws = len(self.analyzer.data)
+        
+        for idx, row in self.analyzer.data.iterrows():
+            nums = row.get('numbers', [])
+            if isinstance(nums, (list, tuple)):
+                # Weight decreases exponentially for older draws
+                weight = np.exp(-(total_draws - idx) / (total_draws * 0.3))
+                for num in nums:
+                    weighted_freq[num] = weighted_freq.get(num, 0) + weight
+        
+        if not weighted_freq:
+            return sorted(random.sample(range(number_range[0], number_range[1] + 1), count))
+        
+        # Sort by weighted frequency
+        sorted_numbers = sorted(weighted_freq.items(), key=lambda x: x[1], reverse=True)
+        predicted = [num for num, _ in sorted_numbers[:count]]
+        
+        # Fill if needed
+        if len(predicted) < count:
+            available = set(range(number_range[0], number_range[1] + 1)) - set(predicted)
+            additional = random.sample(list(available), count - len(predicted))
+            predicted.extend(additional)
+        
+        return sorted(predicted[:count])
+    
+    def predict_by_gap_analysis(self, count: int = 6, number_range: Tuple[int, int] = (1, 49)) -> List[int]:
+        """
+        Predict numbers based on gap analysis (numbers that are "due" to appear).
+        
+        Args:
+            count: Number of lottery numbers to predict.
+            number_range: Range of valid lottery numbers (min, max).
+            
+        Returns:
+            List of predicted numbers.
+        """
+        if self.analyzer.data.empty:
+            return sorted(random.sample(range(number_range[0], number_range[1] + 1), count))
+        
+        # Calculate gap (draws since last appearance) for each number
+        gaps = {}
+        all_numbers = set(range(number_range[0], number_range[1] + 1))
+        
+        # Initialize gaps
+        for num in all_numbers:
+            gaps[num] = len(self.analyzer.data)  # Max gap initially
+        
+        # Calculate actual gaps from most recent draw backwards
+        for idx in range(len(self.analyzer.data) - 1, -1, -1):
+            row = self.analyzer.data.iloc[idx]
+            nums = row.get('numbers', [])
+            
+            if isinstance(nums, (list, tuple)):
+                for num in nums:
+                    if num in gaps and gaps[num] == len(self.analyzer.data):
+                        gaps[num] = len(self.analyzer.data) - idx - 1
+        
+        # Sort by gap (largest gaps = most "due")
+        sorted_gaps = sorted(gaps.items(), key=lambda x: x[1], reverse=True)
+        
+        # Select numbers with largest gaps, but add some randomness
+        top_due = [num for num, _ in sorted_gaps[:count * 2]]
+        predicted = random.sample(top_due, min(count, len(top_due)))
+        
+        # Fill if needed
+        if len(predicted) < count:
+            available = set(all_numbers) - set(predicted)
+            additional = random.sample(list(available), count - len(predicted))
+            predicted.extend(additional)
+        
+        return sorted(predicted[:count])
+    
+    def predict_by_moving_average(self, count: int = 6, number_range: Tuple[int, int] = (1, 49), 
+                                  window: int = 10) -> List[int]:
+        """
+        Predict numbers using moving average of recent draws.
+        
+        Args:
+            count: Number of lottery numbers to predict.
+            number_range: Range of valid lottery numbers (min, max).
+            window: Number of recent draws to consider.
+            
+        Returns:
+            List of predicted numbers.
+        """
+        if self.analyzer.data.empty or len(self.analyzer.data) < window:
+            return sorted(random.sample(range(number_range[0], number_range[1] + 1), count))
+        
+        # Calculate frequency in recent window
+        recent_freq = {}
+        recent_data = self.analyzer.data.tail(window)
+        
+        for idx, row in recent_data.iterrows():
+            nums = row.get('numbers', [])
+            if isinstance(nums, (list, tuple)):
+                for num in nums:
+                    recent_freq[num] = recent_freq.get(num, 0) + 1
+        
+        if not recent_freq:
+            return sorted(random.sample(range(number_range[0], number_range[1] + 1), count))
+        
+        # Sort by recent frequency
+        sorted_numbers = sorted(recent_freq.items(), key=lambda x: x[1], reverse=True)
+        predicted = [num for num, _ in sorted_numbers[:count]]
+        
+        # Fill if needed
+        if len(predicted) < count:
+            available = set(range(number_range[0], number_range[1] + 1)) - set(predicted)
+            additional = random.sample(list(available), count - len(predicted))
+            predicted.extend(additional)
+        
+        return sorted(predicted[:count])
+    
+    def predict_by_cyclic_pattern(self, count: int = 6, number_range: Tuple[int, int] = (1, 49)) -> List[int]:
+        """
+        Predict numbers based on cyclic patterns in draws.
+        
+        Args:
+            count: Number of lottery numbers to predict.
+            number_range: Range of valid lottery numbers (min, max).
+            
+        Returns:
+            List of predicted numbers.
+        """
+        if self.analyzer.data.empty or len(self.analyzer.data) < 3:
+            return sorted(random.sample(range(number_range[0], number_range[1] + 1), count))
+        
+        # Analyze appearance cycles for each number
+        cycles = {}
+        all_numbers = set(range(number_range[0], number_range[1] + 1))
+        
+        for num in all_numbers:
+            appearances = []
+            for idx, row in self.analyzer.data.iterrows():
+                nums = row.get('numbers', [])
+                if isinstance(nums, (list, tuple)) and num in nums:
+                    appearances.append(idx)
+            
+            if len(appearances) >= 2:
+                # Calculate average cycle length
+                gaps = [appearances[i+1] - appearances[i] for i in range(len(appearances)-1)]
+                avg_cycle = np.mean(gaps) if gaps else 0
+                
+                # Predict if current gap approaches average cycle
+                last_appearance = appearances[-1]
+                current_gap = len(self.analyzer.data) - last_appearance - 1
+                
+                # Score based on how close to expected cycle
+                if avg_cycle > 0:
+                    cycle_score = 1.0 - abs(current_gap - avg_cycle) / avg_cycle
+                    cycles[num] = max(0, cycle_score)
+                else:
+                    cycles[num] = 0
+            else:
+                cycles[num] = random.random() * 0.5  # Low score for insufficient data
+        
+        # Sort by cycle score
+        sorted_cycles = sorted(cycles.items(), key=lambda x: x[1], reverse=True)
+        predicted = [num for num, _ in sorted_cycles[:count]]
+        
+        return sorted(predicted[:count])
+    
     def predict_combined(self, count: int = 6, number_range: Tuple[int, int] = (1, 49)) -> Dict[str, List[int]]:
         """
         Generate predictions using multiple algorithms and combine them.
@@ -167,6 +345,7 @@ class PredictionEngine:
         """
         predictions = {}
         
+        # Original algorithms
         if 'frequency' in self.algorithms:
             predictions['frequency'] = self.predict_by_frequency(count, number_range)
         
@@ -175,6 +354,19 @@ class PredictionEngine:
         
         if 'pattern' in self.algorithms:
             predictions['pattern'] = self.predict_by_pattern(count, number_range)
+        
+        # New statistical models
+        if 'weighted_frequency' in self.algorithms:
+            predictions['weighted_frequency'] = self.predict_by_weighted_frequency(count, number_range)
+        
+        if 'gap_analysis' in self.algorithms:
+            predictions['gap_analysis'] = self.predict_by_gap_analysis(count, number_range)
+        
+        if 'moving_average' in self.algorithms:
+            predictions['moving_average'] = self.predict_by_moving_average(count, number_range)
+        
+        if 'cyclic_pattern' in self.algorithms:
+            predictions['cyclic_pattern'] = self.predict_by_cyclic_pattern(count, number_range)
         
         # Generate ensemble prediction by voting
         all_predicted = []

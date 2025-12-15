@@ -12,7 +12,7 @@
   "prediction": {
     "analysis_window": 30,
     "min_data_points": 10,
-    "prediction_algorithms": ["frequency", "hot_cold", "pattern"],
+    "prediction_algorithms": ["frequency", "hot_cold", "pattern", "weighted_frequency", "gap_analysis", "moving_average", "cyclic_pattern"],
     "confidence_threshold": 0.6
   },
   "ui": {
