@@ -22,6 +22,7 @@ from src.data.data_handler import DataHandler
 from src.data.visualizer import Visualizer
 from src.utils.password_generator import PasswordGenerator
 from src.utils.logger import setup_logger
+from src.utils.api_client import get_api_client, configure_api
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -33,6 +34,21 @@ config_manager = ConfigManager()
 data_handler = DataHandler()
 record_manager = RecordManager()
 password_generator = PasswordGenerator()
+
+# Initialize API client
+api_client = get_api_client()
+try:
+    # Try to load API credentials from api_config.json
+    api_config_path = Path(__file__).parent / 'api_config.json'
+    if api_config_path.exists():
+        with open(api_config_path, 'r', encoding='utf-8') as f:
+            api_config = json.load(f)
+            configure_api(api_config.get('app_id', ''), api_config.get('app_secret', ''))
+            logger.info("API client configured successfully")
+    else:
+        logger.warning("API config file not found. Using sample data. Create api_config.json from api_config.json.example")
+except Exception as e:
+    logger.warning(f"Failed to configure API client: {e}. Using sample data.")
 
 # Global data storage (in production, use a database)
 current_data = []
@@ -80,12 +96,49 @@ def get_homepage_info():
         else:
             announcement = "🎯 今日开奖: 所有玩法 | 祝您好运中大奖！"
         
-        # Latest results (sample data)
-        latest_results = [
-            {"lottery": "双色球", "date": "2024-12-15", "numbers": "03, 12, 18, 25, 28, 31 + 08", "status": "已开奖"},
-            {"lottery": "大乐透", "date": "2024-12-14", "numbers": "05, 11, 19, 27, 33 + 02, 09", "status": "已开奖"},
-            {"lottery": "福彩3D", "date": "2024-12-15", "numbers": "5 3 7", "status": "已开奖"}
-        ]
+        # Get latest results from API
+        latest_results = []
+        api_client = get_api_client()
+        
+        if api_client.is_configured():
+            # Try to get real data from API
+            lottery_types_to_fetch = ["双色球", "大乐透", "福彩3D"]
+            for lottery_type in lottery_types_to_fetch:
+                try:
+                    draw_data = api_client.get_latest_draw(lottery_type)
+                    if draw_data:
+                        formatted = api_client.format_draw_result(lottery_type, draw_data)
+                        if formatted:
+                            # Format numbers for display
+                            if lottery_type == "双色球":
+                                red_nums = ", ".join([f"{n:02d}" for n in formatted['numbers']])
+                                blue_num = f"{formatted['extra_numbers'][0]:02d}" if formatted['extra_numbers'] else "??"
+                                numbers_str = f"{red_nums} + {blue_num}"
+                            elif lottery_type == "大乐透":
+                                main_nums = ", ".join([f"{n:02d}" for n in formatted['numbers']])
+                                bonus_nums = ", ".join([f"{n:02d}" for n in formatted['extra_numbers']])
+                                numbers_str = f"{main_nums} + {bonus_nums}"
+                            else:
+                                numbers_str = " ".join([str(n) for n in formatted['numbers']])
+                            
+                            latest_results.append({
+                                "lottery": lottery_type,
+                                "period": formatted.get('period', ''),
+                                "date": formatted.get('draw_date', '').split()[0] if formatted.get('draw_date') else '',
+                                "numbers": numbers_str,
+                                "status": "已开奖"
+                            })
+                except Exception as e:
+                    logger.error(f"Error fetching {lottery_type} from API: {e}")
+                    continue
+        
+        # Fallback to sample data if API is not configured or failed
+        if not latest_results:
+            latest_results = [
+                {"lottery": "双色球", "period": "2024XXX", "date": "2024-12-15", "numbers": "03, 12, 18, 25, 28, 31 + 08", "status": "示例数据"},
+                {"lottery": "大乐透", "period": "2024XXX", "date": "2024-12-14", "numbers": "05, 11, 19, 27, 33 + 02, 09", "status": "示例数据"},
+                {"lottery": "福彩3D", "period": "2024XXX", "date": "2024-12-15", "numbers": "5 3 7", "status": "示例数据"}
+            ]
         
         return jsonify({
             'success': True,

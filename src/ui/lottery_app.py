@@ -17,8 +17,9 @@ from PySide6.QtGui import QFont, QPixmap
 from ..config import ConfigManager
 from ..core import DataAnalyzer, PredictionEngine, RecordManager
 from ..data import DataHandler, DataVisualizer
-from ..utils import PasswordGenerator, setup_logger
+from ..utils import PasswordGenerator, setup_logger, get_api_client, configure_api
 from .number_button import NumberButton
+import json
 
 
 class LotteryApp(QMainWindow):
@@ -37,6 +38,21 @@ class LotteryApp(QMainWindow):
         self.password_generator = PasswordGenerator(self.config_manager.config.get('security', {}))
         self.visualizer = DataVisualizer()
         self.logger = setup_logger()
+        
+        # Initialize API client
+        self.api_client = get_api_client()
+        try:
+            # Try to load API credentials from api_config.json
+            api_config_path = Path(__file__).parent.parent.parent / 'api_config.json'
+            if api_config_path.exists():
+                with open(api_config_path, 'r', encoding='utf-8') as f:
+                    api_config = json.load(f)
+                    configure_api(api_config.get('app_id', ''), api_config.get('app_secret', ''))
+                    self.logger.info("API客户端配置成功")
+            else:
+                self.logger.warning("API配置文件未找到。使用示例数据。请从 api_config.json.example 创建 api_config.json")
+        except Exception as e:
+            self.logger.warning(f"配置API客户端失败: {e}。使用示例数据。")
         
         # UI state
         self.selected_numbers = []
@@ -164,8 +180,8 @@ class LotteryApp(QMainWindow):
         results_layout = QVBoxLayout(results_group)
         
         self.home_results_table = QTableWidget()
-        self.home_results_table.setColumnCount(4)
-        self.home_results_table.setHorizontalHeaderLabels(["彩票类型", "开奖日期", "开奖号码", "状态"])
+        self.home_results_table.setColumnCount(5)
+        self.home_results_table.setHorizontalHeaderLabels(["彩票类型", "期号", "开奖日期", "开奖号码", "状态"])
         self.home_results_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.home_results_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         results_layout.addWidget(self.home_results_table)
@@ -250,17 +266,53 @@ class LotteryApp(QMainWindow):
     
     def update_home_latest_table(self):
         """更新最新开奖信息表"""
-        # Populate with sample data or latest results
-        self.home_results_table.setRowCount(3)
+        # Try to fetch data from API
+        results_data = []
         
-        # Sample data - in real app, this would come from actual data
-        sample_data = [
-            ["双色球", "2024-12-15", "03, 12, 18, 25, 28, 31 + 08", "已开奖"],
-            ["大乐透", "2024-12-14", "05, 11, 19, 27, 33 + 02, 09", "已开奖"],
-            ["福彩3D", "2024-12-15", "5 3 7", "已开奖"]
-        ]
+        if self.api_client.is_configured():
+            # Try to get real data from API
+            lottery_types_to_fetch = ["双色球", "大乐透", "福彩3D"]
+            for lottery_type in lottery_types_to_fetch:
+                try:
+                    draw_data = self.api_client.get_latest_draw(lottery_type)
+                    if draw_data:
+                        formatted = self.api_client.format_draw_result(lottery_type, draw_data)
+                        if formatted:
+                            # Format numbers for display
+                            if lottery_type == "双色球":
+                                red_nums = ", ".join([f"{n:02d}" for n in formatted['numbers']])
+                                blue_num = f"{formatted['extra_numbers'][0]:02d}" if formatted['extra_numbers'] else "??"
+                                numbers_str = f"{red_nums} + {blue_num}"
+                            elif lottery_type == "大乐透":
+                                main_nums = ", ".join([f"{n:02d}" for n in formatted['numbers']])
+                                bonus_nums = ", ".join([f"{n:02d}" for n in formatted['extra_numbers']])
+                                numbers_str = f"{main_nums} + {bonus_nums}"
+                            else:
+                                numbers_str = " ".join([str(n) for n in formatted['numbers']])
+                            
+                            date_str = formatted.get('draw_date', '').split()[0] if formatted.get('draw_date') else ''
+                            results_data.append([
+                                lottery_type,
+                                f"{formatted.get('period', '')}期",
+                                date_str,
+                                numbers_str,
+                                "已开奖"
+                            ])
+                except Exception as e:
+                    self.logger.error(f"获取{lottery_type}数据失败: {e}")
+                    continue
         
-        for row, data in enumerate(sample_data):
+        # Fallback to sample data if API is not configured or failed
+        if not results_data:
+            results_data = [
+                ["双色球", "2024XXX期", "2024-12-15", "03, 12, 18, 25, 28, 31 + 08", "示例数据"],
+                ["大乐透", "2024XXX期", "2024-12-14", "05, 11, 19, 27, 33 + 02, 09", "示例数据"],
+                ["福彩3D", "2024XXX期", "2024-12-15", "5 3 7", "示例数据"]
+            ]
+        
+        # Update table
+        self.home_results_table.setRowCount(len(results_data))
+        for row, data in enumerate(results_data):
             for col, value in enumerate(data):
                 self.home_results_table.setItem(row, col, QTableWidgetItem(value))
     
