@@ -1,0 +1,5 @@
+{
+  "app_id": "your_app_id_here",
+  "app_secret": "your_app_secret_here",
+  "notes": "请将此文件复制为 api_config.json 并填入真实的 AppID 和密钥"
+}
