@@ -1,13 +1,15 @@
 """
 Lottery Types Configuration
 Defines rules and configurations for different lottery games.
+Supports 8 Chinese lottery types: 4 sports + 4 welfare games.
 """
 
 from typing import Dict, List, Tuple
 
 
-# Chinese Sports Lottery Game Configurations
-# Chinese Welfare Lottery Game Configurations
+# Chinese Lottery Game Configurations (8 types total)
+# Sports Lottery: 大乐透, 七星彩, 排列三, 排列五
+# Welfare Lottery: 双色球, 快乐8, 七乐彩, 福彩3D
 LOTTERY_GAMES = {
     # Sports Lottery Games (体育彩票)
     "大乐透": {
@@ -15,6 +17,8 @@ LOTTERY_GAMES = {
         "name_en": "Super Lotto",
         "category": "sports",
         "description": "5 main numbers (1-35) + 2 bonus numbers (1-12)",
+        "price": 2.0,
+        "deadline": "20:00",
         "main_numbers": {
             "count": 5,
             "range": (1, 35),
@@ -43,6 +47,8 @@ LOTTERY_GAMES = {
         "name_en": "7-Star Lottery",
         "category": "sports",
         "description": "7 digits, each from 0-9",
+        "price": 2.0,
+        "deadline": "20:30",
         "digits": {
             "count": 7,
             "range": (0, 9),
@@ -63,6 +69,8 @@ LOTTERY_GAMES = {
         "name_en": "Pick 3",
         "category": "sports",
         "description": "3 digits, each from 0-9",
+        "price": 2.0,
+        "deadline": "20:30",
         "digits": {
             "count": 3,
             "range": (0, 9),
@@ -85,6 +93,8 @@ LOTTERY_GAMES = {
         "name_en": "Pick 5",
         "category": "sports",
         "description": "5 digits, each from 0-9",
+        "price": 2.0,
+        "deadline": "20:30",
         "digits": {
             "count": 5,
             "range": (0, 9),
@@ -101,6 +111,8 @@ LOTTERY_GAMES = {
         "name_en": "Double Color Ball",
         "category": "welfare",
         "description": "6 red balls (1-33) + 1 blue ball (1-16)",
+        "price": 2.0,
+        "deadline": "20:00",
         "main_numbers": {
             "count": 6,
             "range": (1, 33),
@@ -126,6 +138,8 @@ LOTTERY_GAMES = {
         "name_en": "Happy 8",
         "category": "welfare",
         "description": "Select 1-10 numbers from 1-80, draw 20 numbers",
+        "price": 2.0,
+        "deadline": "20:00",
         "main_numbers": {
             "count": 10,  # Player can choose 1-10, we default to 10
             "range": (1, 80),
@@ -148,6 +162,8 @@ LOTTERY_GAMES = {
         "name_en": "7 Happy Lottery",
         "category": "welfare",
         "description": "7 main numbers (1-30) + 1 special number (1-30)",
+        "price": 2.0,
+        "deadline": "20:30",
         "main_numbers": {
             "count": 7,
             "range": (1, 30),
@@ -174,6 +190,8 @@ LOTTERY_GAMES = {
         "name_en": "Welfare 3D",
         "category": "welfare",
         "description": "3 digits, each from 0-9",
+        "price": 2.0,
+        "deadline": "20:30",
         "digits": {
             "count": 3,
             "range": (0, 9),
@@ -189,19 +207,6 @@ LOTTERY_GAMES = {
             {"level": "组选3", "description": "2 same", "base_prize": 346},
             {"level": "组选6", "description": "All different", "base_prize": 173}
         ]
-    },
-    
-    # Generic lottery for backward compatibility
-    "通用": {
-        "name": "General Lottery (通用)",
-        "name_en": "General Lottery",
-        "category": "general",
-        "description": "Configurable lottery game",
-        "main_numbers": {
-            "count": 6,
-            "range": (1, 49),
-            "name": "Numbers"
-        }
     }
 }
 
@@ -209,12 +214,12 @@ LOTTERY_GAMES = {
 class LotteryType:
     """Represents a lottery game type with its rules and configuration."""
     
-    def __init__(self, game_type: str = "通用"):
+    def __init__(self, game_type: str = "双色球"):
         """
         Initialize lottery type with configuration.
         
         Args:
-            game_type: Type of lottery game (大乐透, 七星彩, 排列三, 排列五, 通用).
+            game_type: Type of lottery game (8 types: 大乐透, 七星彩, 排列三, 排列五, 双色球, 快乐8, 七乐彩, 福彩3D).
         """
         if game_type not in LOTTERY_GAMES:
             raise ValueError(f"Unknown lottery type: {game_type}. Available: {list(LOTTERY_GAMES.keys())}")
@@ -344,12 +349,12 @@ class LotteryType:
         return LOTTERY_GAMES.get(game_type, {})
 
 
-def get_lottery_type(game_type: str = "通用") -> LotteryType:
+def get_lottery_type(game_type: str = "双色球") -> LotteryType:
     """
     Factory function to create LotteryType instance.
     
     Args:
-        game_type: Type of lottery game.
+        game_type: Type of lottery game (default: 双色球).
         
     Returns:
         LotteryType instance.

@@ -15,13 +15,13 @@ from ..config.lottery_types import LotteryType, get_lottery_type
 class PredictionEngine:
     """Generates predictions for lottery numbers using various algorithms."""
     
-    def __init__(self, config: Optional[dict] = None, lottery_type: str = "通用"):
+    def __init__(self, config: Optional[dict] = None, lottery_type: str = "双色球"):
         """
         Initialize prediction engine with configuration.
         
         Args:
             config: Configuration dictionary.
-            lottery_type: Type of lottery game (大乐透, 七星彩, 排列三, 排列五, 通用).
+            lottery_type: Type of lottery game (8 types: 大乐透, 七星彩, 排列三, 排列五, 双色球, 快乐8, 七乐彩, 福彩3D).
         """
         self.config = config or {}
         self.lottery_type = get_lottery_type(lottery_type)
