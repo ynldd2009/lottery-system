@@ -5,11 +5,13 @@
 
 import sys
 from pathlib import Path
+from datetime import datetime
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                               QHBoxLayout, QTabWidget, QLabel, QPushButton,
                               QTextEdit, QTableWidget, QTableWidgetItem, QFileDialog,
-                              QMessageBox, QGridLayout, QGroupBox, QLineEdit, QSpinBox)
-from PySide6.QtCore import Qt, QThread, Signal
+                              QMessageBox, QGridLayout, QGroupBox, QLineEdit, QSpinBox,
+                              QHeaderView)
+from PySide6.QtCore import Qt, QThread, Signal, QTimer
 from PySide6.QtGui import QFont, QPixmap
 
 from ..config import ConfigManager
@@ -64,11 +66,17 @@ class LotteryApp(QMainWindow):
         self.tabs = QTabWidget()
         main_layout.addWidget(self.tabs)
         
-        # Create tabs
+        # Create tabs (Home first, then others)
+        self.create_home_tab()
         self.create_analysis_tab()
         self.create_prediction_tab()
         self.create_data_management_tab()
         self.create_utilities_tab()
+        
+        # Start home page timer
+        self.home_timer = QTimer()
+        self.home_timer.timeout.connect(self.update_home_display)
+        self.home_timer.start(1000)  # Update every second
         
         # Create menu bar
         self.create_menu_bar()
@@ -111,6 +119,150 @@ class LotteryApp(QMainWindow):
         
         faq_action = help_menu.addAction('常见问题')
         faq_action.triggered.connect(self.show_faq)
+    
+    def create_home_tab(self):
+        """创建首页选项卡。"""
+        home_tab = QWidget()
+        layout = QVBoxLayout(home_tab)
+        
+        # Title
+        title = QLabel("彩票分析系统 - 首页")
+        title_font = QFont()
+        title_font.setPointSize(18)
+        title_font.setBold(True)
+        title.setFont(title_font)
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title)
+        
+        # Current time label
+        self.time_label = QLabel("🕐 当前时间: ")
+        time_font = QFont()
+        time_font.setPointSize(12)
+        self.time_label.setFont(time_font)
+        self.time_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.time_label)
+        
+        # Deadline info label
+        self.deadline_label = QLabel("⏰ 购买截止: ")
+        deadline_font = QFont()
+        deadline_font.setPointSize(11)
+        self.deadline_label.setFont(deadline_font)
+        self.deadline_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.deadline_label)
+        
+        # Marquee/Announcement label
+        self.marquee_label = QLabel("🎯 欢迎使用彩票分析系统")
+        marquee_font = QFont()
+        marquee_font.setPointSize(10)
+        self.marquee_label.setFont(marquee_font)
+        self.marquee_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.marquee_label.setStyleSheet("background-color: #ffe4b5; padding: 10px; border-radius: 5px;")
+        layout.addWidget(self.marquee_label)
+        
+        # Latest draw results table
+        results_group = QGroupBox("最新开奖信息")
+        results_layout = QVBoxLayout(results_group)
+        
+        self.home_results_table = QTableWidget()
+        self.home_results_table.setColumnCount(4)
+        self.home_results_table.setHorizontalHeaderLabels(["彩票类型", "开奖日期", "开奖号码", "状态"])
+        self.home_results_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.home_results_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        results_layout.addWidget(self.home_results_table)
+        
+        layout.addWidget(results_group)
+        
+        # Quick action buttons
+        actions_group = QGroupBox("快速操作")
+        actions_layout = QHBoxLayout(actions_group)
+        
+        analyze_btn = QPushButton("数据分析")
+        analyze_btn.clicked.connect(lambda: self.tabs.setCurrentIndex(1))
+        actions_layout.addWidget(analyze_btn)
+        
+        predict_btn = QPushButton("号码预测")
+        predict_btn.clicked.connect(lambda: self.tabs.setCurrentIndex(2))
+        actions_layout.addWidget(predict_btn)
+        
+        data_btn = QPushButton("数据管理")
+        data_btn.clicked.connect(lambda: self.tabs.setCurrentIndex(3))
+        actions_layout.addWidget(data_btn)
+        
+        layout.addWidget(actions_group)
+        
+        # Add tab
+        self.tabs.addTab(home_tab, "首页")
+        
+        # Initial update
+        self.update_home_display()
+    
+    def update_home_display(self):
+        """更新首页显示"""
+        # Update time
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S %A")
+        self.time_label.setText(f"🕐 当前时间: {current_time}")
+        
+        # Update deadline info
+        deadline_info = self.get_deadline_info()
+        self.deadline_label.setText(f"⏰ 购买截止: {deadline_info}")
+        
+        # Update marquee
+        self.update_marquee()
+        
+        # Update latest results table
+        self.update_home_latest_table()
+    
+    def get_deadline_info(self):
+        """获取截止时间信息"""
+        now = datetime.now()
+        hour = now.hour
+        minute = now.minute
+        
+        deadlines = []
+        
+        if hour < 20 or (hour == 20 and minute == 0):
+            if hour < 19:
+                deadlines.append("双色球 20:00")
+                deadlines.append("大乐透 20:00")
+                deadlines.append("快乐8 20:00")
+            if hour < 20:
+                deadlines.append("福彩3D 20:30")
+                deadlines.append("排列三 20:30")
+                deadlines.append("排列五 20:30")
+                deadlines.append("七星彩 20:30")
+                deadlines.append("七乐彩 20:30")
+        
+        return " | ".join(deadlines) if deadlines else "今日彩票销售已截止"
+    
+    def update_marquee(self):
+        """更新滚动信息"""
+        today = datetime.now().weekday()
+        
+        # 根据星期几确定开奖彩票
+        if today in [0, 2, 4, 6]:  # 周一、三、五、日
+            text = "🎯 今日开奖: 双色球、福彩3D、快乐8 | 祝您好运中大奖！"
+        elif today in [1, 3, 5]:  # 周二、四、六
+            text = "🎯 今日开奖: 大乐透、排列三、排列五、七星彩、七乐彩 | 祝您好运中大奖！"
+        else:
+            text = "🎯 今日开奖: 所有玩法 | 祝您好运中大奖！"
+        
+        self.marquee_label.setText(text)
+    
+    def update_home_latest_table(self):
+        """更新最新开奖信息表"""
+        # Populate with sample data or latest results
+        self.home_results_table.setRowCount(3)
+        
+        # Sample data - in real app, this would come from actual data
+        sample_data = [
+            ["双色球", "2024-12-15", "03, 12, 18, 25, 28, 31 + 08", "已开奖"],
+            ["大乐透", "2024-12-14", "05, 11, 19, 27, 33 + 02, 09", "已开奖"],
+            ["福彩3D", "2024-12-15", "5 3 7", "已开奖"]
+        ]
+        
+        for row, data in enumerate(sample_data):
+            for col, value in enumerate(data):
+                self.home_results_table.setItem(row, col, QTableWidgetItem(value))
     
     def create_analysis_tab(self):
         """创建数据分析选项卡。"""
