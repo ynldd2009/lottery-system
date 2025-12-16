@@ -60,6 +60,41 @@ def index():
     return render_template('index.html', lottery_types=list(LOTTERY_GAMES.keys()))
 
 
+def calculate_countdown(deadline_hour, deadline_minute):
+    """
+    计算倒计时
+    
+    Args:
+        deadline_hour: 截止小时
+        deadline_minute: 截止分钟
+        
+    Returns:
+        倒计时字符串和是否紧急
+    """
+    now = datetime.now()
+    deadline_today = now.replace(hour=deadline_hour, minute=deadline_minute, second=0, microsecond=0)
+    
+    if now < deadline_today:
+        time_left = deadline_today - now
+        hours = time_left.seconds // 3600
+        minutes = (time_left.seconds % 3600) // 60
+        seconds = time_left.seconds % 60
+        
+        # 如果剩余时间少于30分钟，标记为紧急
+        is_urgent = time_left.total_seconds() < 1800
+        
+        if hours > 0:
+            countdown = f"{hours}小时{minutes}分钟"
+        elif minutes > 0:
+            countdown = f"{minutes}分{seconds}秒"
+        else:
+            countdown = f"{seconds}秒"
+            
+        return countdown, is_urgent
+    else:
+        return "已截止", False
+
+
 @app.route('/api/homepage-info', methods=['GET'])
 def get_homepage_info():
     """Get homepage information including time, deadlines, and announcements"""
@@ -72,21 +107,32 @@ def get_homepage_info():
         # Current time
         current_time = now.strftime("%Y-%m-%d %H:%M:%S %A")
         
-        # Deadline info
-        deadlines = []
-        if hour < 20 or (hour == 20 and minute == 0):
-            if hour < 19:
-                deadlines.append("双色球 20:00")
-                deadlines.append("大乐透 20:00")
-                deadlines.append("快乐8 20:00")
-            if hour < 20:
-                deadlines.append("福彩3D 20:30")
-                deadlines.append("排列三 20:30")
-                deadlines.append("排列五 20:30")
-                deadlines.append("七星彩 20:30")
-                deadlines.append("七乐彩 20:30")
+        # Deadline info with countdown
+        countdown_items = []
         
-        deadline_info = " | ".join(deadlines) if deadlines else "今日彩票销售已截止"
+        # 20:00 deadline lotteries
+        if hour < 20 or (hour == 20 and minute == 0):
+            countdown_20, urgent_20 = calculate_countdown(20, 0)
+            if countdown_20 != "已截止":
+                countdown_items.append({
+                    "text": f"双色球、大乐透、快乐8",
+                    "time": "20:00",
+                    "countdown": countdown_20,
+                    "urgent": urgent_20
+                })
+        
+        # 20:30 deadline lotteries
+        if hour < 20 or (hour == 20 and minute < 30):
+            countdown_2030, urgent_2030 = calculate_countdown(20, 30)
+            if countdown_2030 != "已截止":
+                countdown_items.append({
+                    "text": f"福彩3D、排列三、排列五、七星彩、七乐彩",
+                    "time": "20:30",
+                    "countdown": countdown_2030,
+                    "urgent": urgent_2030
+                })
+        
+        deadline_info = countdown_items if countdown_items else []
         
         # Announcement based on day of week
         if today in [0, 2, 4, 6]:  # Mon, Wed, Fri, Sun

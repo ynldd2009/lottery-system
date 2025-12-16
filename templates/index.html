@@ -27,6 +27,7 @@
             <thead>
                 <tr>
                     <th>彩票类型</th>
+                    <th>期号</th>
                     <th>开奖日期</th>
                     <th>开奖号码</th>
                     <th>状态</th>
@@ -34,7 +35,7 @@
             </thead>
             <tbody>
                 <tr>
-                    <td colspan="4" style="text-align: center;">加载中...</td>
+                    <td colspan="5" style="text-align: center;">加载中...</td>
                 </tr>
             </tbody>
         </table>
@@ -105,8 +106,19 @@ function updateHomepageInfo() {
                 // Update time
                 document.getElementById('current-time').textContent = `🕐 当前时间: ${data.current_time}`;
                 
-                // Update deadline
-                document.getElementById('deadline-info').textContent = `⏰ 购买截止: ${data.deadline_info}`;
+                // Update deadline with countdown
+                const deadlineDiv = document.getElementById('deadline-info');
+                if (data.deadline_info && data.deadline_info.length > 0) {
+                    let deadlineHTML = '⏰ 投注倒计时：';
+                    data.deadline_info.forEach((item, index) => {
+                        if (index > 0) deadlineHTML += ' | ';
+                        const style = item.urgent ? 'color: red; font-weight: bold;' : '';
+                        deadlineHTML += `<span style="${style}">${item.text} (${item.time}) 还剩 ${item.countdown}</span>`;
+                    });
+                    deadlineDiv.innerHTML = deadlineHTML;
+                } else {
+                    deadlineDiv.textContent = '⏰ 今日彩票销售已截止';
+                }
                 
                 // Update announcement
                 document.getElementById('announcement').textContent = data.announcement;
@@ -117,9 +129,10 @@ function updateHomepageInfo() {
                 data.latest_results.forEach(result => {
                     const row = tbody.insertRow();
                     row.insertCell(0).textContent = result.lottery;
-                    row.insertCell(1).textContent = result.date;
-                    row.insertCell(2).textContent = result.numbers;
-                    row.insertCell(3).textContent = result.status;
+                    row.insertCell(1).textContent = result.period || '';
+                    row.insertCell(2).textContent = result.date;
+                    row.insertCell(3).textContent = result.numbers;
+                    row.insertCell(4).textContent = result.status;
                 });
             }
         })

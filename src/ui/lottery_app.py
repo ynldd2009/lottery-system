@@ -158,12 +158,13 @@ class LotteryApp(QMainWindow):
         self.time_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.time_label)
         
-        # Deadline info label
-        self.deadline_label = QLabel("⏰ 购买截止: ")
+        # Deadline info label (supports rich text for countdown)
+        self.deadline_label = QLabel("⏰ 投注倒计时: ")
         deadline_font = QFont()
         deadline_font.setPointSize(11)
         self.deadline_label.setFont(deadline_font)
         self.deadline_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.deadline_label.setTextFormat(Qt.TextFormat.RichText)  # Enable HTML rendering
         layout.addWidget(self.deadline_label)
         
         # Marquee/Announcement label
@@ -218,9 +219,9 @@ class LotteryApp(QMainWindow):
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S %A")
         self.time_label.setText(f"🕐 当前时间: {current_time}")
         
-        # Update deadline info
+        # Update deadline info with countdown (HTML format)
         deadline_info = self.get_deadline_info()
-        self.deadline_label.setText(f"⏰ 购买截止: {deadline_info}")
+        self.deadline_label.setText(f"⏰ 投注倒计时: {deadline_info}")
         
         # Update marquee
         self.update_marquee()
@@ -228,27 +229,73 @@ class LotteryApp(QMainWindow):
         # Update latest results table
         self.update_home_latest_table()
     
+    def calculate_countdown(self, deadline_hour, deadline_minute):
+        """
+        计算倒计时
+        
+        Args:
+            deadline_hour: 截止小时
+            deadline_minute: 截止分钟
+            
+        Returns:
+            (倒计时字符串, 是否紧急)
+        """
+        now = datetime.now()
+        deadline_today = now.replace(hour=deadline_hour, minute=deadline_minute, second=0, microsecond=0)
+        
+        if now < deadline_today:
+            time_left = deadline_today - now
+            hours = time_left.seconds // 3600
+            minutes = (time_left.seconds % 3600) // 60
+            seconds = time_left.seconds % 60
+            
+            # 如果剩余时间少于30分钟，标记为紧急
+            is_urgent = time_left.total_seconds() < 1800
+            
+            if hours > 0:
+                countdown = f"{hours}小时{minutes}分钟"
+            elif minutes > 0:
+                countdown = f"{minutes}分{seconds}秒"
+            else:
+                countdown = f"{seconds}秒"
+                
+            return countdown, is_urgent
+        else:
+            return "已截止", False
+    
     def get_deadline_info(self):
-        """获取截止时间信息"""
+        """获取截止时间信息（含倒计时）"""
         now = datetime.now()
         hour = now.hour
         minute = now.minute
         
-        deadlines = []
+        countdown_items = []
         
+        # 20:00 deadline lotteries
         if hour < 20 or (hour == 20 and minute == 0):
-            if hour < 19:
-                deadlines.append("双色球 20:00")
-                deadlines.append("大乐透 20:00")
-                deadlines.append("快乐8 20:00")
-            if hour < 20:
-                deadlines.append("福彩3D 20:30")
-                deadlines.append("排列三 20:30")
-                deadlines.append("排列五 20:30")
-                deadlines.append("七星彩 20:30")
-                deadlines.append("七乐彩 20:30")
+            countdown_20, urgent_20 = self.calculate_countdown(20, 0)
+            if countdown_20 != "已截止":
+                text = f"双色球、大乐透、快乐8 (20:00) 还剩 {countdown_20}"
+                countdown_items.append((text, urgent_20))
         
-        return " | ".join(deadlines) if deadlines else "今日彩票销售已截止"
+        # 20:30 deadline lotteries
+        if hour < 20 or (hour == 20 and minute < 30):
+            countdown_2030, urgent_2030 = self.calculate_countdown(20, 30)
+            if countdown_2030 != "已截止":
+                text = f"福彩3D、排列三、排列五、七星彩、七乐彩 (20:30) 还剩 {countdown_2030}"
+                countdown_items.append((text, urgent_2030))
+        
+        if countdown_items:
+            # Format with HTML for red text on urgent items
+            html_parts = []
+            for text, is_urgent in countdown_items:
+                if is_urgent:
+                    html_parts.append(f'<span style="color: red; font-weight: bold;">{text}</span>')
+                else:
+                    html_parts.append(text)
+            return " | ".join(html_parts)
+        else:
+            return "今日彩票销售已截止"
     
     def update_marquee(self):
         """更新滚动信息"""
