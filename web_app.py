@@ -8,6 +8,7 @@ from flask import Flask, render_template, request, jsonify, send_file
 import sys
 from pathlib import Path
 import json
+from datetime import datetime
 
 # Add src directory to Python path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -41,6 +42,61 @@ current_data = []
 def index():
     """Home page"""
     return render_template('index.html', lottery_types=list(LOTTERY_GAMES.keys()))
+
+
+@app.route('/api/homepage-info', methods=['GET'])
+def get_homepage_info():
+    """Get homepage information including time, deadlines, and announcements"""
+    try:
+        now = datetime.now()
+        hour = now.hour
+        minute = now.minute
+        today = now.weekday()
+        
+        # Current time
+        current_time = now.strftime("%Y-%m-%d %H:%M:%S %A")
+        
+        # Deadline info
+        deadlines = []
+        if hour < 20 or (hour == 20 and minute == 0):
+            if hour < 19:
+                deadlines.append("双色球 20:00")
+                deadlines.append("大乐透 20:00")
+                deadlines.append("快乐8 20:00")
+            if hour < 20:
+                deadlines.append("福彩3D 20:30")
+                deadlines.append("排列三 20:30")
+                deadlines.append("排列五 20:30")
+                deadlines.append("七星彩 20:30")
+                deadlines.append("七乐彩 20:30")
+        
+        deadline_info = " | ".join(deadlines) if deadlines else "今日彩票销售已截止"
+        
+        # Announcement based on day of week
+        if today in [0, 2, 4, 6]:  # Mon, Wed, Fri, Sun
+            announcement = "🎯 今日开奖: 双色球、福彩3D、快乐8 | 祝您好运中大奖！"
+        elif today in [1, 3, 5]:  # Tue, Thu, Sat
+            announcement = "🎯 今日开奖: 大乐透、排列三、排列五、七星彩、七乐彩 | 祝您好运中大奖！"
+        else:
+            announcement = "🎯 今日开奖: 所有玩法 | 祝您好运中大奖！"
+        
+        # Latest results (sample data)
+        latest_results = [
+            {"lottery": "双色球", "date": "2024-12-15", "numbers": "03, 12, 18, 25, 28, 31 + 08", "status": "已开奖"},
+            {"lottery": "大乐透", "date": "2024-12-14", "numbers": "05, 11, 19, 27, 33 + 02, 09", "status": "已开奖"},
+            {"lottery": "福彩3D", "date": "2024-12-15", "numbers": "5 3 7", "status": "已开奖"}
+        ]
+        
+        return jsonify({
+            'success': True,
+            'current_time': current_time,
+            'deadline_info': deadline_info,
+            'announcement': announcement,
+            'latest_results': latest_results
+        })
+    except Exception as e:
+        logger.error(f"Error getting homepage info: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @app.route('/analysis')

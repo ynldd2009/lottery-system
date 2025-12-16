@@ -8,6 +8,39 @@
     <p class="subtitle">支持电脑和手机访问的智能彩票分析平台</p>
 </div>
 
+<!-- Real-time Information Section -->
+<div class="info-section home-realtime">
+    <div class="realtime-info">
+        <p id="current-time" class="time-display">🕐 当前时间: 加载中...</p>
+        <p id="deadline-info" class="deadline-display">⏰ 购买截止: 加载中...</p>
+    </div>
+    <div id="announcement" class="announcement-banner">
+        🎯 欢迎使用彩票分析系统
+    </div>
+</div>
+
+<!-- Latest Results Section -->
+<div class="info-section">
+    <h2>最新开奖信息</h2>
+    <div class="latest-results">
+        <table id="results-table" class="table">
+            <thead>
+                <tr>
+                    <th>彩票类型</th>
+                    <th>开奖日期</th>
+                    <th>开奖号码</th>
+                    <th>状态</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="4" style="text-align: center;">加载中...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
 <div class="features-grid">
     <div class="feature-card">
         <div class="feature-icon">📊</div>
@@ -61,4 +94,110 @@
         </ul>
     </div>
 </div>
+
+<script>
+// Update homepage info every second
+function updateHomepageInfo() {
+    fetch('/api/homepage-info')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update time
+                document.getElementById('current-time').textContent = `🕐 当前时间: ${data.current_time}`;
+                
+                // Update deadline
+                document.getElementById('deadline-info').textContent = `⏰ 购买截止: ${data.deadline_info}`;
+                
+                // Update announcement
+                document.getElementById('announcement').textContent = data.announcement;
+                
+                // Update results table
+                const tbody = document.querySelector('#results-table tbody');
+                tbody.innerHTML = '';
+                data.latest_results.forEach(result => {
+                    const row = tbody.insertRow();
+                    row.insertCell(0).textContent = result.lottery;
+                    row.insertCell(1).textContent = result.date;
+                    row.insertCell(2).textContent = result.numbers;
+                    row.insertCell(3).textContent = result.status;
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error updating homepage info:', error);
+        });
+}
+
+// Initial update
+updateHomepageInfo();
+
+// Update every second
+setInterval(updateHomepageInfo, 1000);
+</script>
+
+<style>
+.home-realtime {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+}
+
+.realtime-info {
+    text-align: center;
+}
+
+.time-display, .deadline-display {
+    font-size: 1.1em;
+    margin: 10px 0;
+}
+
+.announcement-banner {
+    background: #ffe4b5;
+    color: #333;
+    padding: 15px;
+    border-radius: 5px;
+    text-align: center;
+    margin-top: 15px;
+    font-weight: bold;
+}
+
+.latest-results {
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+.table th, .table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.table th {
+    background-color: #f4f4f4;
+    font-weight: bold;
+}
+
+.table tbody tr:hover {
+    background-color: #f9f9f9;
+}
+
+@media (max-width: 768px) {
+    .time-display, .deadline-display {
+        font-size: 0.95em;
+    }
+    
+    .table th, .table td {
+        padding: 8px;
+        font-size: 0.9em;
+    }
+}
+</style>
+
 {% endblock %}
