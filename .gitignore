@@ -67,3 +67,6 @@ instance/
 *.db
 *.sqlite
 *.sqlite3
+
+# API Configuration (contains sensitive credentials)
+api_config.json
