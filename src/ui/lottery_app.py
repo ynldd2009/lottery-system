@@ -373,9 +373,21 @@ class LotteryApp(QMainWindow):
         prize_group = QGroupBox("🏆 中奖对比")
         prize_layout = QVBoxLayout(prize_group)
         
+        # Lottery type selector
+        lottery_type_layout = QHBoxLayout()
+        lottery_type_label = QLabel("彩票类型:")
+        lottery_type_layout.addWidget(lottery_type_label)
+        
+        self.prize_lottery_type = QComboBox()
+        self.prize_lottery_type.addItems(["双色球", "快乐8", "3D", "七乐彩"])
+        self.prize_lottery_type.currentTextChanged.connect(self.update_prize_input_hint)
+        lottery_type_layout.addWidget(self.prize_lottery_type)
+        lottery_type_layout.addStretch()
+        prize_layout.addLayout(lottery_type_layout)
+        
         # Number selection info
-        prize_info_label = QLabel("选择您的号码进行中奖对比 (双色球: 6个红球+1个蓝球)")
-        prize_layout.addWidget(prize_info_label)
+        self.prize_info_label = QLabel("选择您的号码进行中奖对比 (双色球: 6个红球+1个蓝球)")
+        prize_layout.addWidget(self.prize_info_label)
         
         # Number selection display
         self.prize_numbers_display = QLineEdit()
@@ -384,7 +396,7 @@ class LotteryApp(QMainWindow):
         
         # Check button
         check_prize_btn = QPushButton("检查中奖")
-        check_prize_btn.clicked.connect(self.check_prize_ssq)
+        check_prize_btn.clicked.connect(self.check_prize_multi)
         prize_layout.addWidget(check_prize_btn)
         
         # Result display
@@ -934,6 +946,36 @@ class LotteryApp(QMainWindow):
         """
         QMessageBox.information(self, "常见问题", faq_text)
     
+    def update_prize_input_hint(self, lottery_type):
+        """更新中奖对比输入提示信息。"""
+        hints = {
+            "双色球": ("选择您的号码进行中奖对比 (双色球: 6个红球+1个蓝球)", 
+                      "示例: 3,9,12,13,26,32,9 (前6个红球，最后1个蓝球)"),
+            "快乐8": ("选择您的号码进行中奖对比 (快乐8: 10个号码)",
+                     "示例: 4,7,11,17,20,22,27,29,32,34 (10个号码，1-80范围)"),
+            "3D": ("选择您的号码进行中奖对比 (3D: 3个数字)",
+                  "示例: 7,9,4 (3个数字，0-9范围)"),
+            "七乐彩": ("选择您的号码进行中奖对比 (七乐彩: 7个号码)",
+                      "示例: 5,10,14,15,16,18,23 (7个号码，1-30范围)")
+        }
+        
+        if lottery_type in hints:
+            self.prize_info_label.setText(hints[lottery_type][0])
+            self.prize_numbers_display.setPlaceholderText(hints[lottery_type][1])
+    
+    def check_prize_multi(self):
+        """检查多种彩票类型的中奖级别。"""
+        lottery_type = self.prize_lottery_type.currentText()
+        
+        if lottery_type == "双色球":
+            self.check_prize_ssq()
+        elif lottery_type == "快乐8":
+            self.check_prize_kl8()
+        elif lottery_type == "3D":
+            self.check_prize_3d()
+        elif lottery_type == "七乐彩":
+            self.check_prize_qlc()
+    
     def check_prize_ssq(self):
         """检查双色球中奖级别。"""
         try:
@@ -1039,6 +1081,257 @@ class LotteryApp(QMainWindow):
             
         except ValueError:
             self.prize_result.setText("❌ 号码格式错误，请输入用逗号分隔的数字，例如: 3,9,12,13,26,32,9")
+        except Exception as e:
+            self.prize_result.setText(f"❌ 检查失败: {str(e)}")
+    
+    def check_prize_kl8(self):
+        """检查快乐8中奖级别。"""
+        try:
+            numbers_text = self.prize_numbers_display.text().strip()
+            if not numbers_text:
+                self.prize_result.setText("❌ 请输入您的号码")
+                return
+            
+            numbers = [int(x.strip()) for x in numbers_text.split(',')]
+            
+            if len(numbers) != 10:
+                self.prize_result.setText("❌ 快乐8需要选择10个号码")
+                return
+            
+            if any(num < 1 or num > 80 for num in numbers):
+                self.prize_result.setText("❌ 号码必须在 1-80 之间")
+                return
+            
+            # Simulate draw (20 numbers drawn)
+            draw_numbers = [4, 7, 11, 17, 20, 22, 27, 29, 32, 34, 37, 48, 55, 64, 68, 69, 71, 73, 74, 78]
+            
+            match_count = len(set(numbers) & set(draw_numbers))
+            
+            # Determine prize
+            prize_info = ""
+            prize_amount = ""
+            
+            if match_count == 10:
+                prize_info = "🎉 选十中十！"
+                prize_amount = "500万元"
+            elif match_count == 9:
+                prize_info = "🥈 选十中九"
+                prize_amount = "10,000元"
+            elif match_count == 8:
+                prize_info = "🥉 选十中八"
+                prize_amount = "3,000元"
+            elif match_count == 7:
+                prize_info = "4️⃣ 选十中七"
+                prize_amount = "300元"
+            elif match_count == 6:
+                prize_info = "5️⃣ 选十中六"
+                prize_amount = "50元"
+            elif match_count == 5:
+                prize_info = "6️⃣ 选十中五"
+                prize_amount = "5元"
+            elif match_count == 0:
+                prize_info = "7️⃣ 选十中零"
+                prize_amount = "5元"
+            else:
+                prize_info = "❌ 未中奖"
+                prize_amount = "请继续努力！"
+            
+            result_text = f"""
+<h2>{prize_info}</h2>
+
+<h3>📊 对比详情:</h3>
+<table border="1" cellpadding="5" style="border-collapse: collapse; width: 100%;">
+    <tr style="background-color: #f0f0f0;">
+        <th>您的号码</th>
+        <th>开奖号码</th>
+        <th>匹配数</th>
+    </tr>
+    <tr>
+        <td>{', '.join(map(str, sorted(numbers)))}</td>
+        <td>{', '.join(map(str, sorted(draw_numbers)))}</td>
+        <td style="font-size: 16px; font-weight: bold; color: red;">{match_count}/10</td>
+    </tr>
+</table>
+
+<h3>💰 奖金信息:</h3>
+<p style="font-size: 14px; color: #006600;">{prize_amount}</p>
+
+<p style="font-size: 12px; color: #666;">
+<b>说明:</b> 开奖号码为模拟数据，实际中奖请以官方开奖结果为准。
+</p>
+            """
+            
+            self.prize_result.setHtml(result_text)
+            self.statusBar().showMessage(f'中奖检查完成: {prize_info}')
+            
+        except ValueError:
+            self.prize_result.setText("❌ 号码格式错误，请输入用逗号分隔的10个数字")
+        except Exception as e:
+            self.prize_result.setText(f"❌ 检查失败: {str(e)}")
+    
+    def check_prize_3d(self):
+        """检查3D中奖级别。"""
+        try:
+            numbers_text = self.prize_numbers_display.text().strip()
+            if not numbers_text:
+                self.prize_result.setText("❌ 请输入您的号码")
+                return
+            
+            numbers = [int(x.strip()) for x in numbers_text.split(',')]
+            
+            if len(numbers) != 3:
+                self.prize_result.setText("❌ 3D需要选择3个数字")
+                return
+            
+            if any(num < 0 or num > 9 for num in numbers):
+                self.prize_result.setText("❌ 数字必须在 0-9 之间")
+                return
+            
+            # Simulate draw
+            draw_numbers = [7, 9, 4]
+            
+            # Check matches
+            prize_info = ""
+            prize_amount = ""
+            
+            if numbers == draw_numbers:
+                prize_info = "🎉 直选中奖！"
+                prize_amount = "1,040元"
+            elif sorted(numbers) == sorted(draw_numbers):
+                prize_info = "🥈 组选中奖！"
+                if len(set(numbers)) == 2:
+                    prize_amount = "346元 (组选3)"
+                else:
+                    prize_amount = "173元 (组选6)"
+            else:
+                prize_info = "❌ 未中奖"
+                prize_amount = "请继续努力！"
+            
+            result_text = f"""
+<h2>{prize_info}</h2>
+
+<h3>📊 对比详情:</h3>
+<table border="1" cellpadding="5" style="border-collapse: collapse; width: 100%;">
+    <tr style="background-color: #f0f0f0;">
+        <th>您的号码</th>
+        <th>开奖号码</th>
+        <th>是否中奖</th>
+    </tr>
+    <tr>
+        <td style="font-size: 18px; font-weight: bold;">{numbers[0]} {numbers[1]} {numbers[2]}</td>
+        <td style="font-size: 18px; font-weight: bold; color: red;">{draw_numbers[0]} {draw_numbers[1]} {draw_numbers[2]}</td>
+        <td style="font-size: 16px; font-weight: bold;">{'✓' if numbers == draw_numbers or sorted(numbers) == sorted(draw_numbers) else '✗'}</td>
+    </tr>
+</table>
+
+<h3>💰 奖金信息:</h3>
+<p style="font-size: 14px; color: #006600;">{prize_amount}</p>
+
+<p style="font-size: 12px; color: #666;">
+<b>说明:</b> 开奖号码为模拟数据，实际中奖请以官方开奖结果为准。
+</p>
+            """
+            
+            self.prize_result.setHtml(result_text)
+            self.statusBar().showMessage(f'中奖检查完成: {prize_info}')
+            
+        except ValueError:
+            self.prize_result.setText("❌ 号码格式错误，请输入用逗号分隔的3个数字")
+        except Exception as e:
+            self.prize_result.setText(f"❌ 检查失败: {str(e)}")
+    
+    def check_prize_qlc(self):
+        """检查七乐彩中奖级别。"""
+        try:
+            numbers_text = self.prize_numbers_display.text().strip()
+            if not numbers_text:
+                self.prize_result.setText("❌ 请输入您的号码")
+                return
+            
+            numbers = [int(x.strip()) for x in numbers_text.split(',')]
+            
+            if len(numbers) != 7:
+                self.prize_result.setText("❌ 七乐彩需要选择7个号码")
+                return
+            
+            if any(num < 1 or num > 30 for num in numbers):
+                self.prize_result.setText("❌ 号码必须在 1-30 之间")
+                return
+            
+            # Simulate draw (7 main + 1 special)
+            draw_main = [5, 10, 14, 15, 16, 18, 23]
+            draw_special = 28
+            
+            main_match = len(set(numbers) & set(draw_main))
+            special_match = 1 if draw_special in numbers else 0
+            
+            # Determine prize
+            prize_info = ""
+            prize_amount = ""
+            
+            if main_match == 7:
+                prize_info = "🎉 一等奖！7个基本号码全中"
+                prize_amount = "浮动奖金 (约500万元)"
+            elif main_match == 6 and special_match == 1:
+                prize_info = "🥈 二等奖！6个基本号码+特别号"
+                prize_amount = "浮动奖金 (约10万元)"
+            elif main_match == 6:
+                prize_info = "🥉 三等奖！6个基本号码"
+                prize_amount = "固定奖金: 1,000元"
+            elif main_match == 5 and special_match == 1:
+                prize_info = "4️⃣ 四等奖！5个基本号码+特别号"
+                prize_amount = "固定奖金: 200元"
+            elif main_match == 5:
+                prize_info = "5️⃣ 五等奖！5个基本号码"
+                prize_amount = "固定奖金: 50元"
+            elif main_match == 4 and special_match == 1:
+                prize_info = "6️⃣ 六等奖！4个基本号码+特别号"
+                prize_amount = "固定奖金: 10元"
+            elif main_match == 4:
+                prize_info = "7️⃣ 七等奖！4个基本号码"
+                prize_amount = "固定奖金: 5元"
+            else:
+                prize_info = "❌ 未中奖"
+                prize_amount = "请继续努力！"
+            
+            result_text = f"""
+<h2>{prize_info}</h2>
+
+<h3>📊 对比详情:</h3>
+<table border="1" cellpadding="5" style="border-collapse: collapse; width: 100%;">
+    <tr style="background-color: #f0f0f0;">
+        <th>类型</th>
+        <th>您的号码</th>
+        <th>开奖号码</th>
+        <th>匹配数</th>
+    </tr>
+    <tr>
+        <td><b>基本号码</b></td>
+        <td>{', '.join(map(str, sorted(numbers)))}</td>
+        <td style="color: red;">{', '.join(map(str, sorted(draw_main)))}</td>
+        <td style="font-size: 16px; font-weight: bold;">{main_match}/7</td>
+    </tr>
+    <tr>
+        <td><b>特别号码</b></td>
+        <td>{draw_special if special_match else '-'}</td>
+        <td style="color: blue;">{draw_special}</td>
+        <td style="font-size: 16px; font-weight: bold;">{special_match}/1</td>
+    </tr>
+</table>
+
+<h3>💰 奖金信息:</h3>
+<p style="font-size: 14px; color: #006600;">{prize_amount}</p>
+
+<p style="font-size: 12px; color: #666;">
+<b>说明:</b> 开奖号码为模拟数据，实际中奖请以官方开奖结果为准。
+</p>
+            """
+            
+            self.prize_result.setHtml(result_text)
+            self.statusBar().showMessage(f'中奖检查完成: {prize_info}')
+            
+        except ValueError:
+            self.prize_result.setText("❌ 号码格式错误，请输入用逗号分隔的7个数字")
         except Exception as e:
             self.prize_result.setText(f"❌ 检查失败: {str(e)}")
 

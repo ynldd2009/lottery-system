@@ -67,15 +67,25 @@
         <h2>🏆 中奖对比</h2>
     </div>
     <div class="card-body">
-        <p class="info-text">输入您的双色球号码，检查是否中奖</p>
-        
         <div class="prize-check-section">
             <div class="form-group">
-                <label for="prizeNumbers">输入号码 (格式: 6个红球,1个蓝球):</label>
+                <label for="prizeLotteryType">彩票类型:</label>
+                <select id="prizeLotteryType" class="form-control" onchange="updatePrizeHint()" style="font-size: 16px; margin-bottom: 15px;">
+                    <option value="双色球">双色球</option>
+                    <option value="快乐8">快乐8</option>
+                    <option value="3D">3D</option>
+                    <option value="七乐彩">七乐彩</option>
+                </select>
+            </div>
+            
+            <p id="prizeInfoText" class="info-text">输入您的双色球号码，检查是否中奖</p>
+            
+            <div class="form-group">
+                <label for="prizeNumbers">输入号码:</label>
                 <input type="text" id="prizeNumbers" class="form-control" 
                        placeholder="例如: 3,9,12,13,26,32,9" 
                        style="font-size: 16px;">
-                <small class="form-text">前6个号码为红球(1-33)，最后1个号码为蓝球(1-16)</small>
+                <small id="prizeHintText" class="form-text">前6个号码为红球(1-33)，最后1个号码为蓝球(1-16)</small>
             </div>
             
             <button class="btn btn-warning" onclick="checkPrize()" style="width: 100%; margin-top: 10px;">
@@ -86,7 +96,6 @@
         <div id="prizeResults" class="results-container" style="margin-top: 20px;"></div>
     </div>
 </div>
-
 <div class="card">
     <div class="card-header">
         <h2>预测结果</h2>
@@ -291,9 +300,46 @@ async function predictZone(zoneType, lotteryType) {
     }
 }
 
+function updatePrizeHint() {
+    const lotteryType = document.getElementById('prizeLotteryType').value;
+    const infoText = document.getElementById('prizeInfoText');
+    const hintText = document.getElementById('prizeHintText');
+    const numbersInput = document.getElementById('prizeNumbers');
+    
+    const hints = {
+        '双色球': {
+            info: '输入您的双色球号码，检查是否中奖',
+            hint: '前6个号码为红球(1-33)，最后1个号码为蓝球(1-16)',
+            placeholder: '例如: 3,9,12,13,26,32,9'
+        },
+        '快乐8': {
+            info: '输入您的快乐8号码，检查是否中奖',
+            hint: '10个号码，范围1-80',
+            placeholder: '例如: 4,7,11,17,20,22,27,29,32,34'
+        },
+        '3D': {
+            info: '输入您的3D号码，检查是否中奖',
+            hint: '3个数字，范围0-9',
+            placeholder: '例如: 7,9,4'
+        },
+        '七乐彩': {
+            info: '输入您的七乐彩号码，检查是否中奖',
+            hint: '7个号码，范围1-30',
+            placeholder: '例如: 5,10,14,15,16,18,23'
+        }
+    };
+    
+    if (hints[lotteryType]) {
+        infoText.textContent = hints[lotteryType].info;
+        hintText.textContent = hints[lotteryType].hint;
+        numbersInput.placeholder = hints[lotteryType].placeholder;
+    }
+}
+
 async function checkPrize() {
     const resultsDiv = document.getElementById('prizeResults');
     const numbersInput = document.getElementById('prizeNumbers');
+    const lotteryType = document.getElementById('prizeLotteryType').value;
     const numbers = numbersInput.value.trim();
     
     if (!numbers) {
@@ -309,7 +355,7 @@ async function checkPrize() {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ numbers: numbers })
+            body: JSON.stringify({ numbers: numbers, lottery_type: lotteryType })
         });
         
         const data = await response.json();
@@ -319,12 +365,13 @@ async function checkPrize() {
             
             // Prize level with emoji
             let prizeEmoji = '';
-            if (data.prize_level === '一等奖') prizeEmoji = '🎉';
-            else if (data.prize_level === '二等奖') prizeEmoji = '🥈';
-            else if (data.prize_level === '三等奖') prizeEmoji = '🥉';
-            else if (data.prize_level === '四等奖') prizeEmoji = '4️⃣';
-            else if (data.prize_level === '五等奖') prizeEmoji = '5️⃣';
-            else if (data.prize_level === '六等奖') prizeEmoji = '6️⃣';
+            if (data.prize_level.includes('一等奖') || data.prize_level.includes('选十中十') || data.prize_level.includes('直选')) prizeEmoji = '🎉';
+            else if (data.prize_level.includes('二等奖') || data.prize_level.includes('选十中九')) prizeEmoji = '🥈';
+            else if (data.prize_level.includes('三等奖') || data.prize_level.includes('选十中八') || data.prize_level.includes('组选')) prizeEmoji = '🥉';
+            else if (data.prize_level.includes('四等奖') || data.prize_level.includes('选十中七')) prizeEmoji = '4️⃣';
+            else if (data.prize_level.includes('五等奖') || data.prize_level.includes('选十中六')) prizeEmoji = '5️⃣';
+            else if (data.prize_level.includes('六等奖') || data.prize_level.includes('选十中五')) prizeEmoji = '6️⃣';
+            else if (data.prize_level.includes('七等奖') || data.prize_level.includes('选十中零')) prizeEmoji = '7️⃣';
             else prizeEmoji = '❌';
             
             html += `<h2 class="prize-title" style="color: ${data.is_winner ? '#28a745' : '#dc3545'};">`;
@@ -333,26 +380,56 @@ async function checkPrize() {
             // Comparison table
             html += '<div class="prize-comparison">';
             html += '<table class="prize-table">';
-            html += '<thead><tr><th>类型</th><th>您的号码</th><th>开奖号码</th><th>匹配数</th></tr></thead>';
-            html += '<tbody>';
             
-            // Red balls
-            html += '<tr>';
-            html += '<td><strong>红球</strong></td>';
-            html += `<td class="red-numbers">${data.selected_red.join(', ')}</td>`;
-            html += `<td class="red-numbers">${data.draw_red.join(', ')}</td>`;
-            html += `<td class="match-count">${data.red_match}/6</td>`;
-            html += '</tr>';
+            if (data.lottery_type === '双色球') {
+                html += '<thead><tr><th>类型</th><th>您的号码</th><th>开奖号码</th><th>匹配数</th></tr></thead>';
+                html += '<tbody>';
+                html += '<tr>';
+                html += '<td><strong>红球</strong></td>';
+                html += `<td class="red-numbers">${data.selected_red.join(', ')}</td>`;
+                html += `<td class="red-numbers">${data.draw_red.join(', ')}</td>`;
+                html += `<td class="match-count">${data.red_match}/6</td>`;
+                html += '</tr>';
+                html += '<tr>';
+                html += '<td><strong>蓝球</strong></td>';
+                html += `<td class="blue-number">${data.selected_blue}</td>`;
+                html += `<td class="blue-number">${data.draw_blue}</td>`;
+                html += `<td class="match-count">${data.blue_match}/1</td>`;
+                html += '</tr>';
+                html += '</tbody>';
+            } else if (data.lottery_type === '快乐8') {
+                html += '<thead><tr><th>您的号码</th><th>开奖号码</th><th>匹配数</th></tr></thead>';
+                html += '<tbody><tr>';
+                html += `<td>${data.selected_numbers.sort((a,b) => a-b).join(', ')}</td>`;
+                html += `<td>${data.draw_numbers.sort((a,b) => a-b).join(', ')}</td>`;
+                html += `<td class="match-count" style="color: red; font-weight: bold;">${data.match_count}/10</td>`;
+                html += '</tr></tbody>';
+            } else if (data.lottery_type === '3D') {
+                html += '<thead><tr><th>您的号码</th><th>开奖号码</th><th>是否中奖</th></tr></thead>';
+                html += '<tbody><tr>';
+                html += `<td style="font-size: 20px; font-weight: bold;">${data.selected_numbers.join(' ')}</td>`;
+                html += `<td style="font-size: 20px; font-weight: bold; color: red;">${data.draw_numbers.join(' ')}</td>`;
+                html += `<td style="font-size: 18px; font-weight: bold;">${data.is_winner ? '✓' : '✗'}</td>`;
+                html += '</tr></tbody>';
+            } else if (data.lottery_type === '七乐彩') {
+                html += '<thead><tr><th>类型</th><th>您的号码</th><th>开奖号码</th><th>匹配数</th></tr></thead>';
+                html += '<tbody>';
+                html += '<tr>';
+                html += '<td><strong>基本号码</strong></td>';
+                html += `<td>${data.selected_numbers.sort((a,b) => a-b).join(', ')}</td>`;
+                html += `<td style="color: red;">${data.draw_main.sort((a,b) => a-b).join(', ')}</td>`;
+                html += `<td class="match-count">${data.main_match}/7</td>`;
+                html += '</tr>';
+                html += '<tr>';
+                html += '<td><strong>特别号码</strong></td>';
+                html += `<td>${data.special_match ? data.draw_special : '-'}</td>`;
+                html += `<td style="color: blue;">${data.draw_special}</td>`;
+                html += `<td class="match-count">${data.special_match}/1</td>`;
+                html += '</tr>';
+                html += '</tbody>';
+            }
             
-            // Blue ball
-            html += '<tr>';
-            html += '<td><strong>蓝球</strong></td>';
-            html += `<td class="blue-number">${data.selected_blue}</td>`;
-            html += `<td class="blue-number">${data.draw_blue}</td>`;
-            html += `<td class="match-count">${data.blue_match}/1</td>`;
-            html += '</tr>';
-            
-            html += '</tbody></table>';
+            html += '</table>';
             html += '</div>';
             
             // Prize amount

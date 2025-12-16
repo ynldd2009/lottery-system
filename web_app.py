@@ -199,9 +199,10 @@ def predict_zone():
 
 @app.route('/api/check-prize', methods=['POST'])
 def check_prize():
-    """Check prize level for Double Color Ball (双色球)"""
+    """Check prize level for multiple lottery types"""
     try:
         numbers = request.json.get('numbers')  # Expected format: "3,9,12,13,26,32,9"
+        lottery_type = request.json.get('lottery_type', '双色球')
         
         if not numbers:
             return jsonify({'success': False, 'error': '请输入号码'}), 400
@@ -212,75 +213,195 @@ def check_prize():
         except ValueError:
             return jsonify({'success': False, 'error': '号码格式错误，请输入用逗号分隔的数字'}), 400
         
-        if len(num_list) < 7:
-            return jsonify({'success': False, 'error': '请输入至少7个号码 (6个红球 + 1个蓝球)'}), 400
-        
-        # Split red and blue balls
-        selected_red = num_list[:6]
-        selected_blue = num_list[6]
-        
-        # Validate red balls (1-33)
-        if any(num < 1 or num > 33 for num in selected_red):
-            return jsonify({'success': False, 'error': '红球号码必须在 1-33 之间'}), 400
-        
-        # Validate blue ball (1-16)
-        if selected_blue < 1 or selected_blue > 16:
-            return jsonify({'success': False, 'error': '蓝球号码必须在 1-16 之间'}), 400
-        
-        # Simulate draw numbers (in real app, these would come from actual draw data)
-        draw_red = [3, 9, 12, 13, 26, 32]
-        draw_blue = 9
-        
-        # Calculate matches
-        red_match = len(set(selected_red) & set(draw_red))
-        blue_match = 1 if selected_blue == draw_blue else 0
-        
-        # Determine prize level
-        prize_level = ""
-        prize_amount = ""
-        is_winner = True
-        
-        if red_match == 6 and blue_match == 1:
-            prize_level = "一等奖"
-            prize_amount = "浮动奖金 (500万元起)"
-        elif red_match == 6 and blue_match == 0:
-            prize_level = "二等奖"
-            prize_amount = "浮动奖金 (约20万元)"
-        elif red_match == 5 and blue_match == 1:
-            prize_level = "三等奖"
-            prize_amount = "固定奖金: 3,000元"
-        elif (red_match == 5 and blue_match == 0) or (red_match == 4 and blue_match == 1):
-            prize_level = "四等奖"
-            prize_amount = "固定奖金: 200元"
-        elif (red_match == 4 and blue_match == 0) or (red_match == 3 and blue_match == 1):
-            prize_level = "五等奖"
-            prize_amount = "固定奖金: 10元"
-        elif blue_match == 1:
-            prize_level = "六等奖"
-            prize_amount = "固定奖金: 5元"
+        # Route to appropriate checker
+        if lottery_type == '双色球':
+            return check_prize_ssq(num_list)
+        elif lottery_type == '快乐8':
+            return check_prize_kl8(num_list)
+        elif lottery_type == '3D':
+            return check_prize_3d(num_list)
+        elif lottery_type == '七乐彩':
+            return check_prize_qlc(num_list)
         else:
-            prize_level = "未中奖"
-            prize_amount = "请继续努力！"
-            is_winner = False
-        
-        result = {
-            'success': True,
-            'is_winner': is_winner,
-            'prize_level': prize_level,
-            'prize_amount': prize_amount,
-            'selected_red': selected_red,
-            'selected_blue': selected_blue,
-            'draw_red': draw_red,
-            'draw_blue': draw_blue,
-            'red_match': red_match,
-            'blue_match': blue_match
-        }
-        
-        return jsonify(result)
+            return jsonify({'success': False, 'error': '不支持的彩票类型'}), 400
         
     except Exception as e:
         logger.error(f"Error checking prize: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+def check_prize_ssq(num_list):
+    """Check Double Color Ball (双色球) prize"""
+    if len(num_list) < 7:
+        return jsonify({'success': False, 'error': '请输入至少7个号码 (6个红球 + 1个蓝球)'}), 400
+    
+    selected_red = num_list[:6]
+    selected_blue = num_list[6]
+    
+    if any(num < 1 or num > 33 for num in selected_red):
+        return jsonify({'success': False, 'error': '红球号码必须在 1-33 之间'}), 400
+    
+    if selected_blue < 1 or selected_blue > 16:
+        return jsonify({'success': False, 'error': '蓝球号码必须在 1-16 之间'}), 400
+    
+    draw_red = [3, 9, 12, 13, 26, 32]
+    draw_blue = 9
+    
+    red_match = len(set(selected_red) & set(draw_red))
+    blue_match = 1 if selected_blue == draw_blue else 0
+    
+    prize_level, prize_amount, is_winner = "", "", True
+    
+    if red_match == 6 and blue_match == 1:
+        prize_level, prize_amount = "一等奖", "浮动奖金 (500万元起)"
+    elif red_match == 6 and blue_match == 0:
+        prize_level, prize_amount = "二等奖", "浮动奖金 (约20万元)"
+    elif red_match == 5 and blue_match == 1:
+        prize_level, prize_amount = "三等奖", "固定奖金: 3,000元"
+    elif (red_match == 5 and blue_match == 0) or (red_match == 4 and blue_match == 1):
+        prize_level, prize_amount = "四等奖", "固定奖金: 200元"
+    elif (red_match == 4 and blue_match == 0) or (red_match == 3 and blue_match == 1):
+        prize_level, prize_amount = "五等奖", "固定奖金: 10元"
+    elif blue_match == 1:
+        prize_level, prize_amount = "六等奖", "固定奖金: 5元"
+    else:
+        prize_level, prize_amount, is_winner = "未中奖", "请继续努力！", False
+    
+    return jsonify({
+        'success': True,
+        'lottery_type': '双色球',
+        'is_winner': is_winner,
+        'prize_level': prize_level,
+        'prize_amount': prize_amount,
+        'selected_red': selected_red,
+        'selected_blue': selected_blue,
+        'draw_red': draw_red,
+        'draw_blue': draw_blue,
+        'red_match': red_match,
+        'blue_match': blue_match
+    })
+
+
+def check_prize_kl8(num_list):
+    """Check Happy 8 (快乐8) prize"""
+    if len(num_list) != 10:
+        return jsonify({'success': False, 'error': '快乐8需要选择10个号码'}), 400
+    
+    if any(num < 1 or num > 80 for num in num_list):
+        return jsonify({'success': False, 'error': '号码必须在 1-80 之间'}), 400
+    
+    draw_numbers = [4, 7, 11, 17, 20, 22, 27, 29, 32, 34, 37, 48, 55, 64, 68, 69, 71, 73, 74, 78]
+    match_count = len(set(num_list) & set(draw_numbers))
+    
+    prize_level, prize_amount, is_winner = "", "", True
+    
+    if match_count == 10:
+        prize_level, prize_amount = "选十中十", "500万元"
+    elif match_count == 9:
+        prize_level, prize_amount = "选十中九", "10,000元"
+    elif match_count == 8:
+        prize_level, prize_amount = "选十中八", "3,000元"
+    elif match_count == 7:
+        prize_level, prize_amount = "选十中七", "300元"
+    elif match_count == 6:
+        prize_level, prize_amount = "选十中六", "50元"
+    elif match_count == 5:
+        prize_level, prize_amount = "选十中五", "5元"
+    elif match_count == 0:
+        prize_level, prize_amount = "选十中零", "5元"
+    else:
+        prize_level, prize_amount, is_winner = "未中奖", "请继续努力！", False
+    
+    return jsonify({
+        'success': True,
+        'lottery_type': '快乐8',
+        'is_winner': is_winner,
+        'prize_level': prize_level,
+        'prize_amount': prize_amount,
+        'selected_numbers': num_list,
+        'draw_numbers': draw_numbers,
+        'match_count': match_count
+    })
+
+
+def check_prize_3d(num_list):
+    """Check 3D prize"""
+    if len(num_list) != 3:
+        return jsonify({'success': False, 'error': '3D需要选择3个数字'}), 400
+    
+    if any(num < 0 or num > 9 for num in num_list):
+        return jsonify({'success': False, 'error': '数字必须在 0-9 之间'}), 400
+    
+    draw_numbers = [7, 9, 4]
+    
+    prize_level, prize_amount, is_winner = "", "", True
+    
+    if num_list == draw_numbers:
+        prize_level, prize_amount = "直选中奖", "1,040元"
+    elif sorted(num_list) == sorted(draw_numbers):
+        if len(set(num_list)) == 2:
+            prize_level, prize_amount = "组选3中奖", "346元"
+        else:
+            prize_level, prize_amount = "组选6中奖", "173元"
+    else:
+        prize_level, prize_amount, is_winner = "未中奖", "请继续努力！", False
+    
+    return jsonify({
+        'success': True,
+        'lottery_type': '3D',
+        'is_winner': is_winner,
+        'prize_level': prize_level,
+        'prize_amount': prize_amount,
+        'selected_numbers': num_list,
+        'draw_numbers': draw_numbers
+    })
+
+
+def check_prize_qlc(num_list):
+    """Check Seven Happy Lottery (七乐彩) prize"""
+    if len(num_list) != 7:
+        return jsonify({'success': False, 'error': '七乐彩需要选择7个号码'}), 400
+    
+    if any(num < 1 or num > 30 for num in num_list):
+        return jsonify({'success': False, 'error': '号码必须在 1-30 之间'}), 400
+    
+    draw_main = [5, 10, 14, 15, 16, 18, 23]
+    draw_special = 28
+    
+    main_match = len(set(num_list) & set(draw_main))
+    special_match = 1 if draw_special in num_list else 0
+    
+    prize_level, prize_amount, is_winner = "", "", True
+    
+    if main_match == 7:
+        prize_level, prize_amount = "一等奖", "浮动奖金 (约500万元)"
+    elif main_match == 6 and special_match == 1:
+        prize_level, prize_amount = "二等奖", "浮动奖金 (约10万元)"
+    elif main_match == 6:
+        prize_level, prize_amount = "三等奖", "固定奖金: 1,000元"
+    elif main_match == 5 and special_match == 1:
+        prize_level, prize_amount = "四等奖", "固定奖金: 200元"
+    elif main_match == 5:
+        prize_level, prize_amount = "五等奖", "固定奖金: 50元"
+    elif main_match == 4 and special_match == 1:
+        prize_level, prize_amount = "六等奖", "固定奖金: 10元"
+    elif main_match == 4:
+        prize_level, prize_amount = "七等奖", "固定奖金: 5元"
+    else:
+        prize_level, prize_amount, is_winner = "未中奖", "请继续努力！", False
+    
+    return jsonify({
+        'success': True,
+        'lottery_type': '七乐彩',
+        'is_winner': is_winner,
+        'prize_level': prize_level,
+        'prize_amount': prize_amount,
+        'selected_numbers': num_list,
+        'draw_main': draw_main,
+        'draw_special': draw_special,
+        'main_match': main_match,
+        'special_match': special_match
+    })
 
 
 @app.route('/api/predict-all-algorithms', methods=['POST'])
