@@ -355,6 +355,20 @@ class LotteryApp(QMainWindow):
         
         layout.addLayout(button_layout)
         
+        # Zone-specific predictions
+        zone_group = QGroupBox("🎯 专区预测")
+        zone_layout = QHBoxLayout(zone_group)
+        
+        daletou_back_btn = QPushButton("大乐透后区预测")
+        daletou_back_btn.clicked.connect(self.predict_daletou_back)
+        zone_layout.addWidget(daletou_back_btn)
+        
+        shuangseqiu_blue_btn = QPushButton("双色球蓝球预测")
+        shuangseqiu_blue_btn.clicked.connect(self.predict_shuangseqiu_blue)
+        zone_layout.addWidget(shuangseqiu_blue_btn)
+        
+        layout.addWidget(zone_group)
+        
         self.tabs.addTab(prediction_tab, "号码预测")
     
     def create_data_management_tab(self):
@@ -537,6 +551,76 @@ class LotteryApp(QMainWindow):
             
             self.prediction_results.setPlainText(output)
             self.statusBar().showMessage('预测已生成')
+            
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"预测失败: {str(e)}")
+            self.statusBar().showMessage('预测失败')
+    
+    def predict_daletou_back(self):
+        """大乐透后区专用预测。"""
+        if self.current_data is None or self.current_data.empty:
+            QMessageBox.warning(self, "无数据", 
+                              "请先加载历史数据以获得更好的预测。")
+            return
+        
+        self.statusBar().showMessage('正在生成大乐透后区预测...')
+        
+        try:
+            # Create engine for 大乐透
+            engine = PredictionEngine(lottery_type="大乐透")
+            engine.load_historical_data(self.current_data)
+            
+            # Generate back zone prediction
+            result = engine.predict_daletou_back_zone()
+            
+            # Format results
+            output = "=== 大乐透后区预测 ===\n\n"
+            output += f"{result['description']}\n\n"
+            output += f"预测结果: {result['formatted']}\n"
+            output += f"号码: {result['bonus_numbers']}\n\n"
+            output += f"置信度: {result['confidence']:.1%}\n"
+            output += f"使用算法: {', '.join(result['algorithms_used'])}\n"
+            
+            self.prediction_results.setPlainText(output)
+            self.statusBar().showMessage('大乐透后区预测已生成')
+            
+            QMessageBox.information(self, "预测完成", 
+                                   f"大乐透后区预测: {result['formatted']}")
+            
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"预测失败: {str(e)}")
+            self.statusBar().showMessage('预测失败')
+    
+    def predict_shuangseqiu_blue(self):
+        """双色球蓝球专用预测。"""
+        if self.current_data is None or self.current_data.empty:
+            QMessageBox.warning(self, "无数据", 
+                              "请先加载历史数据以获得更好的预测。")
+            return
+        
+        self.statusBar().showMessage('正在生成双色球蓝球预测...')
+        
+        try:
+            # Create engine for 双色球
+            engine = PredictionEngine(lottery_type="双色球")
+            engine.load_historical_data(self.current_data)
+            
+            # Generate blue ball prediction
+            result = engine.predict_shuangseqiu_blue_ball()
+            
+            # Format results
+            output = "=== 双色球蓝球预测 ===\n\n"
+            output += f"{result['description']}\n\n"
+            output += f"预测结果: {result['formatted']}\n"
+            output += f"号码: {result['blue_ball']}\n\n"
+            output += f"置信度: {result['confidence']:.1%}\n"
+            output += f"使用算法: {', '.join(result['algorithms_used'])}\n"
+            
+            self.prediction_results.setPlainText(output)
+            self.statusBar().showMessage('双色球蓝球预测已生成')
+            
+            QMessageBox.information(self, "预测完成", 
+                                   f"双色球蓝球预测: {result['formatted']}")
             
         except Exception as e:
             QMessageBox.critical(self, "错误", f"预测失败: {str(e)}")

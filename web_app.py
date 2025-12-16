@@ -157,25 +157,43 @@ def analyze_data():
 def predict():
     """Generate lottery predictions"""
     try:
-        lottery_type = request.json.get('lottery_type', '通用')
+        lottery_type = request.json.get('lottery_type', '双色球')
         algorithm = request.json.get('algorithm', 'ensemble')
         
         if not current_data:
             return jsonify({'success': False, 'error': 'No data available. Generate or import data first.'}), 400
         
         engine = PredictionEngine(current_data, lottery_type=lottery_type)
-        
-        if lottery_type != '通用':
-            result = engine.predict_for_lottery_type()
-        else:
-            if algorithm == 'ensemble':
-                result = engine.predict_ensemble()
-            else:
-                result = engine.predict(algorithm=algorithm)
+        result = engine.predict_for_lottery_type()
         
         return jsonify({'success': True, 'prediction': result})
     except Exception as e:
         logger.error(f"Error generating prediction: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/predict-zone', methods=['POST'])
+def predict_zone():
+    """Generate zone-specific predictions (大乐透后区 or 双色球蓝球)"""
+    try:
+        lottery_type = request.json.get('lottery_type')
+        zone_type = request.json.get('zone_type')  # 'daletou_back' or 'shuangseqiu_blue'
+        
+        if not current_data:
+            return jsonify({'success': False, 'error': 'No data available. Generate or import data first.'}), 400
+        
+        engine = PredictionEngine(current_data, lottery_type=lottery_type)
+        
+        if zone_type == 'daletou_back':
+            result = engine.predict_daletou_back_zone()
+        elif zone_type == 'shuangseqiu_blue':
+            result = engine.predict_shuangseqiu_blue_ball()
+        else:
+            return jsonify({'success': False, 'error': 'Invalid zone_type. Use "daletou_back" or "shuangseqiu_blue".'}), 400
+        
+        return jsonify({'success': True, 'prediction': result})
+    except Exception as e:
+        logger.error(f"Error generating zone prediction: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
