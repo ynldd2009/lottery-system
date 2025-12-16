@@ -479,3 +479,49 @@ class PredictionEngine:
             result['formatted'] = self.lottery_type.format_prediction(result['recommended'])
             
             return result
+    
+    def predict_daletou_back_zone(self) -> Dict:
+        """
+        Specialized prediction for 大乐透 back zone (后区).
+        Predicts 2 bonus numbers from 1-12 using enhanced algorithms.
+        
+        Returns:
+            Dictionary with back zone prediction results.
+        """
+        if self.lottery_type.game_type != "大乐透":
+            raise ValueError("This method is only for 大乐透 (Super Lotto)")
+        
+        # Use multiple algorithms specifically for back zone
+        bonus_pred = self.generate_prediction_with_confidence(count=2, number_range=(1, 12))
+        
+        return {
+            'lottery_type': '大乐透后区',
+            'bonus_numbers': bonus_pred['recommended'][:2],
+            'formatted': f"后区: {bonus_pred['recommended'][:2]}",
+            'confidence': bonus_pred['confidence'],
+            'algorithms_used': bonus_pred['algorithms_used'],
+            'description': '大乐透后区专用预测 (2个号码, 1-12)'
+        }
+    
+    def predict_shuangseqiu_blue_ball(self) -> Dict:
+        """
+        Specialized prediction for 双色球 blue ball (蓝球).
+        Predicts 1 blue number from 1-16 using enhanced algorithms.
+        
+        Returns:
+            Dictionary with blue ball prediction results.
+        """
+        if self.lottery_type.game_type != "双色球":
+            raise ValueError("This method is only for 双色球 (Double Color Ball)")
+        
+        # Use multiple algorithms specifically for blue ball
+        blue_pred = self.generate_prediction_with_confidence(count=1, number_range=(1, 16))
+        
+        return {
+            'lottery_type': '双色球蓝球',
+            'blue_ball': blue_pred['recommended'][0],
+            'formatted': f"蓝球: {blue_pred['recommended'][0]}",
+            'confidence': blue_pred['confidence'],
+            'algorithms_used': blue_pred['algorithms_used'],
+            'description': '双色球蓝球专用预测 (1个号码, 1-16)'
+        }

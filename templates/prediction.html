@@ -41,6 +41,27 @@
     </div>
 </div>
 
+<!-- Zone-specific predictions -->
+<div class="card">
+    <div class="card-header">
+        <h2>🎯 专区预测</h2>
+    </div>
+    <div class="card-body">
+        <p class="info-text">针对特定区域的专用预测算法</p>
+        
+        <div class="zone-buttons">
+            <button id="predictDaletouBack" class="btn btn-success" onclick="predictZone('daletou_back', '大乐透')">
+                大乐透后区预测 (1-12)
+            </button>
+            <button id="predictShuangseqiuBlue" class="btn btn-info" onclick="predictZone('shuangseqiu_blue', '双色球')">
+                双色球蓝球预测 (1-16)
+            </button>
+        </div>
+        
+        <div id="zoneResults" class="results-container" style="margin-top: 20px;"></div>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-header">
         <h2>预测结果</h2>
@@ -49,6 +70,35 @@
         <div id="predictionResults" class="results-container"></div>
     </div>
 </div>
+
+<style>
+.zone-buttons {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin: 15px 0;
+}
+
+.zone-buttons button {
+    flex: 1;
+    min-width: 200px;
+}
+
+.info-text {
+    color: #666;
+    margin-bottom: 10px;
+}
+
+@media (max-width: 768px) {
+    .zone-buttons {
+        flex-direction: column;
+    }
+    
+    .zone-buttons button {
+        width: 100%;
+    }
+}
+</style>
 {% endblock %}
 
 {% block extra_js %}
@@ -178,5 +228,76 @@ function displayAllPredictions(predictions) {
     html += '</div>';
     container.innerHTML = html;
 }
+
+// Zone-specific prediction function
+async function predictZone(zoneType, lotteryType) {
+    const resultsDiv = document.getElementById('zoneResults');
+    resultsDiv.innerHTML = '<div class="loading">正在生成专区预测...</div>';
+    
+    try {
+        const response = await fetch('/api/predict-zone', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                zone_type: zoneType,
+                lottery_type: lotteryType
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            const prediction = data.prediction;
+            let html = '<div class="zone-prediction-result">';
+            html += `<h3>${prediction.lottery_type}</h3>`;
+            html += `<div class="prediction-large">${prediction.formatted}</div>`;
+            html += `<p class="description">${prediction.description}</p>`;
+            html += `<p class="confidence">置信度: ${(prediction.confidence * 100).toFixed(1)}%</p>`;
+            html += `<p class="algorithms">使用算法: ${prediction.algorithms_used.join(', ')}</p>`;
+            html += '</div>';
+            resultsDiv.innerHTML = html;
+        } else {
+            resultsDiv.innerHTML = `<div class="alert alert-error">${data.error}</div>`;
+        }
+    } catch (error) {
+        resultsDiv.innerHTML = `<div class="alert alert-error">预测失败: ${error.message}</div>`;
+    }
+}
 </script>
+
+<style>
+.zone-prediction-result {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 25px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.zone-prediction-result h3 {
+    margin: 0 0 15px 0;
+    font-size: 1.5em;
+}
+
+.prediction-large {
+    font-size: 2em;
+    font-weight: bold;
+    margin: 20px 0;
+}
+
+.zone-prediction-result .description {
+    margin: 10px 0;
+    opacity: 0.9;
+}
+
+.zone-prediction-result .confidence,
+.zone-prediction-result .algorithms {
+    margin: 5px 0;
+    opacity: 0.8;
+    font-size: 0.9em;
+}
+</style>
+
 {% endblock %}
