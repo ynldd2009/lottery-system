@@ -197,6 +197,92 @@ def predict_zone():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/check-prize', methods=['POST'])
+def check_prize():
+    """Check prize level for Double Color Ball (双色球)"""
+    try:
+        numbers = request.json.get('numbers')  # Expected format: "3,9,12,13,26,32,9"
+        
+        if not numbers:
+            return jsonify({'success': False, 'error': '请输入号码'}), 400
+        
+        # Parse numbers
+        try:
+            num_list = [int(x.strip()) for x in numbers.split(',')]
+        except ValueError:
+            return jsonify({'success': False, 'error': '号码格式错误，请输入用逗号分隔的数字'}), 400
+        
+        if len(num_list) < 7:
+            return jsonify({'success': False, 'error': '请输入至少7个号码 (6个红球 + 1个蓝球)'}), 400
+        
+        # Split red and blue balls
+        selected_red = num_list[:6]
+        selected_blue = num_list[6]
+        
+        # Validate red balls (1-33)
+        if any(num < 1 or num > 33 for num in selected_red):
+            return jsonify({'success': False, 'error': '红球号码必须在 1-33 之间'}), 400
+        
+        # Validate blue ball (1-16)
+        if selected_blue < 1 or selected_blue > 16:
+            return jsonify({'success': False, 'error': '蓝球号码必须在 1-16 之间'}), 400
+        
+        # Simulate draw numbers (in real app, these would come from actual draw data)
+        draw_red = [3, 9, 12, 13, 26, 32]
+        draw_blue = 9
+        
+        # Calculate matches
+        red_match = len(set(selected_red) & set(draw_red))
+        blue_match = 1 if selected_blue == draw_blue else 0
+        
+        # Determine prize level
+        prize_level = ""
+        prize_amount = ""
+        is_winner = True
+        
+        if red_match == 6 and blue_match == 1:
+            prize_level = "一等奖"
+            prize_amount = "浮动奖金 (500万元起)"
+        elif red_match == 6 and blue_match == 0:
+            prize_level = "二等奖"
+            prize_amount = "浮动奖金 (约20万元)"
+        elif red_match == 5 and blue_match == 1:
+            prize_level = "三等奖"
+            prize_amount = "固定奖金: 3,000元"
+        elif (red_match == 5 and blue_match == 0) or (red_match == 4 and blue_match == 1):
+            prize_level = "四等奖"
+            prize_amount = "固定奖金: 200元"
+        elif (red_match == 4 and blue_match == 0) or (red_match == 3 and blue_match == 1):
+            prize_level = "五等奖"
+            prize_amount = "固定奖金: 10元"
+        elif blue_match == 1:
+            prize_level = "六等奖"
+            prize_amount = "固定奖金: 5元"
+        else:
+            prize_level = "未中奖"
+            prize_amount = "请继续努力！"
+            is_winner = False
+        
+        result = {
+            'success': True,
+            'is_winner': is_winner,
+            'prize_level': prize_level,
+            'prize_amount': prize_amount,
+            'selected_red': selected_red,
+            'selected_blue': selected_blue,
+            'draw_red': draw_red,
+            'draw_blue': draw_blue,
+            'red_match': red_match,
+            'blue_match': blue_match
+        }
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error checking prize: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/predict-all-algorithms', methods=['POST'])
 def predict_all():
     """Get predictions from all algorithms"""

@@ -369,6 +369,32 @@ class LotteryApp(QMainWindow):
         
         layout.addWidget(zone_group)
         
+        # Prize comparison section
+        prize_group = QGroupBox("🏆 中奖对比")
+        prize_layout = QVBoxLayout(prize_group)
+        
+        # Number selection info
+        prize_info_label = QLabel("选择您的号码进行中奖对比 (双色球: 6个红球+1个蓝球)")
+        prize_layout.addWidget(prize_info_label)
+        
+        # Number selection display
+        self.prize_numbers_display = QLineEdit()
+        self.prize_numbers_display.setPlaceholderText("示例: 3,9,12,13,26,32,9 (前6个红球，最后1个蓝球)")
+        prize_layout.addWidget(self.prize_numbers_display)
+        
+        # Check button
+        check_prize_btn = QPushButton("检查中奖")
+        check_prize_btn.clicked.connect(self.check_prize_ssq)
+        prize_layout.addWidget(check_prize_btn)
+        
+        # Result display
+        self.prize_result = QTextEdit()
+        self.prize_result.setReadOnly(True)
+        self.prize_result.setMaximumHeight(200)
+        prize_layout.addWidget(self.prize_result)
+        
+        layout.addWidget(prize_group)
+        
         self.tabs.addTab(prediction_tab, "号码预测")
     
     def create_data_management_tab(self):
@@ -907,6 +933,114 @@ class LotteryApp(QMainWindow):
         <p>答: 可以，使用导出数据或导出记录功能。</p>
         """
         QMessageBox.information(self, "常见问题", faq_text)
+    
+    def check_prize_ssq(self):
+        """检查双色球中奖级别。"""
+        try:
+            # Parse input numbers
+            numbers_text = self.prize_numbers_display.text().strip()
+            if not numbers_text:
+                self.prize_result.setText("❌ 请输入您的号码")
+                return
+            
+            # Parse numbers
+            numbers = [int(x.strip()) for x in numbers_text.split(',')]
+            
+            if len(numbers) < 7:
+                self.prize_result.setText("❌ 请输入至少7个号码 (6个红球 + 1个蓝球)")
+                return
+            
+            # Split red and blue balls
+            selected_red = numbers[:6]
+            selected_blue = numbers[6] if len(numbers) > 6 else None
+            
+            # Validate red balls (1-33)
+            if any(num < 1 or num > 33 for num in selected_red):
+                self.prize_result.setText("❌ 红球号码必须在 1-33 之间")
+                return
+            
+            # Validate blue ball (1-16)
+            if selected_blue is None or selected_blue < 1 or selected_blue > 16:
+                self.prize_result.setText("❌ 蓝球号码必须在 1-16 之间")
+                return
+            
+            # Simulate draw numbers (in real app, these would come from actual draw data)
+            draw_red = [3, 9, 12, 13, 26, 32]
+            draw_blue = 9
+            
+            # Calculate matches
+            red_match = len(set(selected_red) & set(draw_red))
+            blue_match = 1 if selected_blue == draw_blue else 0
+            
+            # Determine prize level
+            prize_info = ""
+            prize_amount = ""
+            
+            if red_match == 6 and blue_match == 1:
+                prize_info = "🎉 一等奖！6+1 匹配"
+                prize_amount = "浮动奖金 (500万元起)"
+            elif red_match == 6 and blue_match == 0:
+                prize_info = "🥈 二等奖！6+0 匹配"
+                prize_amount = "浮动奖金 (约20万元)"
+            elif red_match == 5 and blue_match == 1:
+                prize_info = "🥉 三等奖！5+1 匹配"
+                prize_amount = "固定奖金: 3,000元"
+            elif (red_match == 5 and blue_match == 0) or (red_match == 4 and blue_match == 1):
+                prize_info = "4️⃣ 四等奖！5+0 或 4+1 匹配"
+                prize_amount = "固定奖金: 200元"
+            elif (red_match == 4 and blue_match == 0) or (red_match == 3 and blue_match == 1):
+                prize_info = "5️⃣ 五等奖！4+0 或 3+1 匹配"
+                prize_amount = "固定奖金: 10元"
+            elif (red_match < 3 and blue_match == 1) or (red_match == 2 and blue_match == 1) or (red_match == 1 and blue_match == 1) or (red_match == 0 and blue_match == 1):
+                prize_info = "6️⃣ 六等奖！仅蓝球匹配"
+                prize_amount = "固定奖金: 5元"
+            else:
+                prize_info = "❌ 未中奖"
+                prize_amount = "请继续努力！"
+            
+            # Display result
+            result_text = f"""
+<h2>{prize_info}</h2>
+
+<h3>📊 对比详情:</h3>
+<table border="1" cellpadding="5" style="border-collapse: collapse; width: 100%;">
+    <tr style="background-color: #f0f0f0;">
+        <th>类型</th>
+        <th>您的号码</th>
+        <th>开奖号码</th>
+        <th>匹配数</th>
+    </tr>
+    <tr>
+        <td><b>红球</b></td>
+        <td style="color: red;">{', '.join(map(str, selected_red))}</td>
+        <td style="color: red;">{', '.join(map(str, draw_red))}</td>
+        <td style="font-size: 16px; font-weight: bold;">{red_match}/6</td>
+    </tr>
+    <tr>
+        <td><b>蓝球</b></td>
+        <td style="color: blue;">{selected_blue}</td>
+        <td style="color: blue;">{draw_blue}</td>
+        <td style="font-size: 16px; font-weight: bold;">{blue_match}/1</td>
+    </tr>
+</table>
+
+<h3>💰 奖金信息:</h3>
+<p style="font-size: 14px; color: #006600;">{prize_amount}</p>
+
+<p style="font-size: 12px; color: #666;">
+<b>说明:</b> 开奖号码为模拟数据，实际中奖请以官方开奖结果为准。
+</p>
+            """
+            
+            self.prize_result.setHtml(result_text)
+            
+            # Update status bar
+            self.statusBar().showMessage(f'中奖检查完成: {prize_info}')
+            
+        except ValueError:
+            self.prize_result.setText("❌ 号码格式错误，请输入用逗号分隔的数字，例如: 3,9,12,13,26,32,9")
+        except Exception as e:
+            self.prize_result.setText(f"❌ 检查失败: {str(e)}")
 
 
 def run_app():

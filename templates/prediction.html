@@ -64,6 +64,31 @@
 
 <div class="card">
     <div class="card-header">
+        <h2>🏆 中奖对比</h2>
+    </div>
+    <div class="card-body">
+        <p class="info-text">输入您的双色球号码，检查是否中奖</p>
+        
+        <div class="prize-check-section">
+            <div class="form-group">
+                <label for="prizeNumbers">输入号码 (格式: 6个红球,1个蓝球):</label>
+                <input type="text" id="prizeNumbers" class="form-control" 
+                       placeholder="例如: 3,9,12,13,26,32,9" 
+                       style="font-size: 16px;">
+                <small class="form-text">前6个号码为红球(1-33)，最后1个号码为蓝球(1-16)</small>
+            </div>
+            
+            <button class="btn btn-warning" onclick="checkPrize()" style="width: 100%; margin-top: 10px;">
+                <i class="fas fa-check-circle"></i> 检查中奖
+            </button>
+        </div>
+        
+        <div id="prizeResults" class="results-container" style="margin-top: 20px;"></div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
         <h2>预测结果</h2>
     </div>
     <div class="card-body">
@@ -265,9 +290,179 @@ async function predictZone(zoneType, lotteryType) {
         resultsDiv.innerHTML = `<div class="alert alert-error">预测失败: ${error.message}</div>`;
     }
 }
+
+async function checkPrize() {
+    const resultsDiv = document.getElementById('prizeResults');
+    const numbersInput = document.getElementById('prizeNumbers');
+    const numbers = numbersInput.value.trim();
+    
+    if (!numbers) {
+        resultsDiv.innerHTML = '<div class="alert alert-warning">请输入号码</div>';
+        return;
+    }
+    
+    resultsDiv.innerHTML = '<div class="loading">正在检查中奖...</div>';
+    
+    try {
+        const response = await fetch('/api/check-prize', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ numbers: numbers })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            let html = '<div class="prize-result">';
+            
+            // Prize level with emoji
+            let prizeEmoji = '';
+            if (data.prize_level === '一等奖') prizeEmoji = '🎉';
+            else if (data.prize_level === '二等奖') prizeEmoji = '🥈';
+            else if (data.prize_level === '三等奖') prizeEmoji = '🥉';
+            else if (data.prize_level === '四等奖') prizeEmoji = '4️⃣';
+            else if (data.prize_level === '五等奖') prizeEmoji = '5️⃣';
+            else if (data.prize_level === '六等奖') prizeEmoji = '6️⃣';
+            else prizeEmoji = '❌';
+            
+            html += `<h2 class="prize-title" style="color: ${data.is_winner ? '#28a745' : '#dc3545'};">`;
+            html += `${prizeEmoji} ${data.prize_level}</h2>`;
+            
+            // Comparison table
+            html += '<div class="prize-comparison">';
+            html += '<table class="prize-table">';
+            html += '<thead><tr><th>类型</th><th>您的号码</th><th>开奖号码</th><th>匹配数</th></tr></thead>';
+            html += '<tbody>';
+            
+            // Red balls
+            html += '<tr>';
+            html += '<td><strong>红球</strong></td>';
+            html += `<td class="red-numbers">${data.selected_red.join(', ')}</td>`;
+            html += `<td class="red-numbers">${data.draw_red.join(', ')}</td>`;
+            html += `<td class="match-count">${data.red_match}/6</td>`;
+            html += '</tr>';
+            
+            // Blue ball
+            html += '<tr>';
+            html += '<td><strong>蓝球</strong></td>';
+            html += `<td class="blue-number">${data.selected_blue}</td>`;
+            html += `<td class="blue-number">${data.draw_blue}</td>`;
+            html += `<td class="match-count">${data.blue_match}/1</td>`;
+            html += '</tr>';
+            
+            html += '</tbody></table>';
+            html += '</div>';
+            
+            // Prize amount
+            html += `<div class="prize-amount">${data.prize_amount}</div>`;
+            
+            // Note
+            html += '<p class="prize-note">说明: 开奖号码为模拟数据，实际中奖请以官方开奖结果为准。</p>';
+            
+            html += '</div>';
+            resultsDiv.innerHTML = html;
+        } else {
+            resultsDiv.innerHTML = `<div class="alert alert-error">${data.error}</div>`;
+        }
+    } catch (error) {
+        resultsDiv.innerHTML = `<div class="alert alert-error">检查失败: ${error.message}</div>`;
+    }
+}
 </script>
 
 <style>
+.prize-check-section {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.prize-result {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.prize-title {
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 2em;
+}
+
+.prize-comparison {
+    margin: 20px 0;
+}
+
+.prize-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+}
+
+.prize-table th,
+.prize-table td {
+    padding: 12px;
+    text-align: center;
+    border: 1px solid #dee2e6;
+}
+
+.prize-table thead {
+    background-color: #f8f9fa;
+}
+
+.prize-table th {
+    font-weight: bold;
+    color: #495057;
+}
+
+.red-numbers {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.blue-number {
+    color: #007bff;
+    font-weight: bold;
+}
+
+.match-count {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #28a745;
+}
+
+.prize-amount {
+    text-align: center;
+    font-size: 1.3em;
+    color: #28a745;
+    font-weight: bold;
+    margin: 20px 0;
+    padding: 15px;
+    background: #d4edda;
+    border-radius: 8px;
+}
+
+.prize-note {
+    text-align: center;
+    color: #6c757d;
+    font-size: 0.9em;
+    margin-top: 15px;
+}
+
+@media (max-width: 768px) {
+    .prize-table {
+        font-size: 0.9em;
+    }
+    
+    .prize-title {
+        font-size: 1.5em;
+    }
+}
+
 .zone-prediction-result {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
