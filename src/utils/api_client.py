@@ -6,7 +6,9 @@
 import requests
 import json
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List, Optional, Any
+import logging
 
 class LotteryAPIClient:
     """彩票API客户端"""
@@ -255,6 +257,35 @@ def configure_api(app_id: str, app_secret: str):
     global api_client
     api_client = LotteryAPIClient(app_id, app_secret)
     return api_client
+
+
+def load_api_config(config_path: Path, logger: Optional[logging.Logger] = None) -> bool:
+    """
+    从配置文件加载API配置
+    
+    Args:
+        config_path: API配置文件路径
+        logger: 日志记录器（可选）
+        
+    Returns:
+        是否成功加载配置
+    """
+    try:
+        if config_path.exists():
+            with open(config_path, 'r', encoding='utf-8') as f:
+                api_config = json.load(f)
+                configure_api(api_config.get('app_id', ''), api_config.get('app_secret', ''))
+                if logger:
+                    logger.info("API client configured successfully")
+                return True
+        else:
+            if logger:
+                logger.warning(f"API config file not found at {config_path}. Using sample data.")
+            return False
+    except Exception as e:
+        if logger:
+            logger.warning(f"Failed to configure API client: {e}. Using sample data.")
+        return False
 
 
 def get_api_client() -> LotteryAPIClient:

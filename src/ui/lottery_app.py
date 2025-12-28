@@ -17,7 +17,7 @@ from PySide6.QtGui import QFont, QPixmap
 from ..config import ConfigManager
 from ..core import DataAnalyzer, PredictionEngine, RecordManager
 from ..data import DataHandler, DataVisualizer
-from ..utils import PasswordGenerator, setup_logger, get_api_client, configure_api
+from ..utils import PasswordGenerator, setup_logger, get_api_client, load_api_config, calculate_countdown
 from .number_button import NumberButton
 import json
 
@@ -41,18 +41,8 @@ class LotteryApp(QMainWindow):
         
         # Initialize API client
         self.api_client = get_api_client()
-        try:
-            # Try to load API credentials from api_config.json
-            api_config_path = Path(__file__).parent.parent.parent / 'api_config.json'
-            if api_config_path.exists():
-                with open(api_config_path, 'r', encoding='utf-8') as f:
-                    api_config = json.load(f)
-                    configure_api(api_config.get('app_id', ''), api_config.get('app_secret', ''))
-                    self.logger.info("API客户端配置成功")
-            else:
-                self.logger.warning("API配置文件未找到。使用示例数据。请从 api_config.json.example 创建 api_config.json")
-        except Exception as e:
-            self.logger.warning(f"配置API客户端失败: {e}。使用示例数据。")
+        api_config_path = Path(__file__).parent.parent.parent / 'api_config.json'
+        load_api_config(api_config_path, self.logger)
         
         # UI state
         self.selected_numbers = []
@@ -229,39 +219,6 @@ class LotteryApp(QMainWindow):
         # Update latest results table
         self.update_home_latest_table()
     
-    def calculate_countdown(self, deadline_hour, deadline_minute):
-        """
-        计算倒计时
-        
-        Args:
-            deadline_hour: 截止小时
-            deadline_minute: 截止分钟
-            
-        Returns:
-            (倒计时字符串, 是否紧急)
-        """
-        now = datetime.now()
-        deadline_today = now.replace(hour=deadline_hour, minute=deadline_minute, second=0, microsecond=0)
-        
-        if now < deadline_today:
-            time_left = deadline_today - now
-            hours = time_left.seconds // 3600
-            minutes = (time_left.seconds % 3600) // 60
-            seconds = time_left.seconds % 60
-            
-            # 如果剩余时间少于30分钟，标记为紧急
-            is_urgent = time_left.total_seconds() < 1800
-            
-            if hours > 0:
-                countdown = f"{hours}小时{minutes}分钟"
-            elif minutes > 0:
-                countdown = f"{minutes}分{seconds}秒"
-            else:
-                countdown = f"{seconds}秒"
-                
-            return countdown, is_urgent
-        else:
-            return "已截止", False
     
     def get_deadline_info(self):
         """获取截止时间信息（含倒计时）"""
@@ -273,14 +230,14 @@ class LotteryApp(QMainWindow):
         
         # 20:00 deadline lotteries
         if hour < 20 or (hour == 20 and minute == 0):
-            countdown_20, urgent_20 = self.calculate_countdown(20, 0)
+            countdown_20, urgent_20 = calculate_countdown(20, 0)
             if countdown_20 != "已截止":
                 text = f"双色球、大乐透、快乐8 (20:00) 还剩 {countdown_20}"
                 countdown_items.append((text, urgent_20))
         
         # 20:30 deadline lotteries
         if hour < 20 or (hour == 20 and minute < 30):
-            countdown_2030, urgent_2030 = self.calculate_countdown(20, 30)
+            countdown_2030, urgent_2030 = calculate_countdown(20, 30)
             if countdown_2030 != "已截止":
                 text = f"福彩3D、排列三、排列五、七星彩、七乐彩 (20:30) 还剩 {countdown_2030}"
                 countdown_items.append((text, urgent_2030))

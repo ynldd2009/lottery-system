@@ -22,7 +22,8 @@ from src.data.data_handler import DataHandler
 from src.data.visualizer import Visualizer
 from src.utils.password_generator import PasswordGenerator
 from src.utils.logger import setup_logger
-from src.utils.api_client import get_api_client, configure_api
+from src.utils.api_client import get_api_client, load_api_config
+from src.utils.time_utils import calculate_countdown
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -37,18 +38,8 @@ password_generator = PasswordGenerator()
 
 # Initialize API client
 api_client = get_api_client()
-try:
-    # Try to load API credentials from api_config.json
-    api_config_path = Path(__file__).parent / 'api_config.json'
-    if api_config_path.exists():
-        with open(api_config_path, 'r', encoding='utf-8') as f:
-            api_config = json.load(f)
-            configure_api(api_config.get('app_id', ''), api_config.get('app_secret', ''))
-            logger.info("API client configured successfully")
-    else:
-        logger.warning("API config file not found. Using sample data. Create api_config.json from api_config.json.example")
-except Exception as e:
-    logger.warning(f"Failed to configure API client: {e}. Using sample data.")
+api_config_path = Path(__file__).parent / 'api_config.json'
+load_api_config(api_config_path, logger)
 
 # Global data storage (in production, use a database)
 current_data = []
@@ -58,41 +49,6 @@ current_data = []
 def index():
     """Home page"""
     return render_template('index.html', lottery_types=list(LOTTERY_GAMES.keys()))
-
-
-def calculate_countdown(deadline_hour, deadline_minute):
-    """
-    计算倒计时
-    
-    Args:
-        deadline_hour: 截止小时
-        deadline_minute: 截止分钟
-        
-    Returns:
-        倒计时字符串和是否紧急
-    """
-    now = datetime.now()
-    deadline_today = now.replace(hour=deadline_hour, minute=deadline_minute, second=0, microsecond=0)
-    
-    if now < deadline_today:
-        time_left = deadline_today - now
-        hours = time_left.seconds // 3600
-        minutes = (time_left.seconds % 3600) // 60
-        seconds = time_left.seconds % 60
-        
-        # 如果剩余时间少于30分钟，标记为紧急
-        is_urgent = time_left.total_seconds() < 1800
-        
-        if hours > 0:
-            countdown = f"{hours}小时{minutes}分钟"
-        elif minutes > 0:
-            countdown = f"{minutes}分{seconds}秒"
-        else:
-            countdown = f"{seconds}秒"
-            
-        return countdown, is_urgent
-    else:
-        return "已截止", False
 
 
 @app.route('/api/homepage-info', methods=['GET'])
