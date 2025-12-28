@@ -263,12 +263,33 @@ def load_api_config(config_path: Path, logger: Optional[logging.Logger] = None) 
     """
     从配置文件加载API配置
     
+    This function loads API credentials from a JSON configuration file and configures
+    the global API client. The config file should contain:
+    {
+        "app_id": "your_app_id",
+        "app_secret": "your_app_secret"
+    }
+    
+    If the config file doesn't exist or is invalid, the system will fall back to
+    using sample data for demonstration purposes.
+    
     Args:
-        config_path: API配置文件路径
-        logger: 日志记录器（可选）
+        config_path: API配置文件路径 (Path to the API config JSON file)
+        logger: 日志记录器（可选）(Optional logger for status messages)
         
     Returns:
-        是否成功加载配置
+        是否成功加载配置 (True if config loaded successfully, False if using fallback)
+    
+    Example:
+        >>> logger = setup_logger()
+        >>> config_path = Path('api_config.json')
+        >>> success = load_api_config(config_path, logger)
+        >>> if success:
+        ...     # API client is now configured with real credentials
+        ...     pass
+        ... else:
+        ...     # Using sample data for demonstration
+        ...     pass
     """
     try:
         if config_path.exists():
@@ -280,7 +301,11 @@ def load_api_config(config_path: Path, logger: Optional[logging.Logger] = None) 
                 return True
         else:
             if logger:
-                logger.warning(f"API config file not found at {config_path}. Using sample data.")
+                logger.warning(
+                    f"API config file not found at {config_path}. Using sample data. "
+                    f"Create {config_path.name} from {config_path.name}.example with your API credentials "
+                    f"to enable real lottery data integration."
+                )
             return False
     except Exception as e:
         if logger:

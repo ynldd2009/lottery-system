@@ -4,6 +4,12 @@ Time utility functions for the lottery system.
 
 from datetime import datetime
 
+# Constants for countdown messages
+# Note: These are in Chinese to match the rest of the application
+# For internationalization, these could be moved to a config or i18n module
+DEADLINE_PASSED_MESSAGE = "已截止"
+URGENT_THRESHOLD_SECONDS = 1800  # 30 minutes
+
 
 def calculate_countdown(deadline_hour, deadline_minute):
     """
@@ -26,7 +32,7 @@ def calculate_countdown(deadline_hour, deadline_minute):
         seconds = time_left.seconds % 60
         
         # 如果剩余时间少于30分钟，标记为紧急
-        is_urgent = time_left.total_seconds() < 1800
+        is_urgent = time_left.total_seconds() < URGENT_THRESHOLD_SECONDS
         
         if hours > 0:
             countdown = f"{hours}小时{minutes}分钟"
@@ -37,4 +43,4 @@ def calculate_countdown(deadline_hour, deadline_minute):
             
         return countdown, is_urgent
     else:
-        return "已截止", False
+        return DEADLINE_PASSED_MESSAGE, False
