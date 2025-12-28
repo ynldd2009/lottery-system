@@ -1,0 +1,35 @@
+{
+  "system": {
+    "app_name": "Lottery Analysis System",
+    "version": "1.0.0",
+    "language": "en"
+  },
+  "data": {
+    "validity_period_days": 365,
+    "max_records": 10000,
+    "cache_enabled": true
+  },
+  "prediction": {
+    "analysis_window": 30,
+    "min_data_points": 10,
+    "prediction_algorithms": ["frequency", "hot_cold", "pattern", "weighted_frequency", "gap_analysis", "moving_average", "cyclic_pattern"],
+    "confidence_threshold": 0.6
+  },
+  "ui": {
+    "theme": "light",
+    "window_width": 1200,
+    "window_height": 800,
+    "chart_style": "default"
+  },
+  "export": {
+    "default_format": "csv",
+    "include_statistics": true,
+    "include_predictions": true
+  },
+  "security": {
+    "password_length": 16,
+    "password_include_special": true,
+    "password_include_numbers": true,
+    "password_include_uppercase": true
+  }
+}

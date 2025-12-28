@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}数据分析 - 彩票分析预测系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>📊 数据分析</h1>
+    <p>对历史彩票数据进行统计分析</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>数据准备</h2>
+    </div>
+    <div class="card-body">
+        <button id="generateDataBtn" class="btn btn-primary">生成样本数据 (100条)</button>
+        <span id="dataStatus" class="status-text"></span>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>分析结果</h2>
+    </div>
+    <div class="card-body">
+        <button id="analyzeBtn" class="btn btn-success">开始分析</button>
+        <div id="analysisResults" class="results-container"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('generateDataBtn').addEventListener('click', async function() {
+    this.disabled = true;
+    this.textContent = '生成中...';
+    
+    try {
+        const response = await fetch('/api/generate-sample-data', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({num_draws: 100})
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            document.getElementById('dataStatus').textContent = `✓ 已生成 ${data.count} 条数据`;
+            document.getElementById('dataStatus').className = 'status-text success';
+        } else {
+            alert('生成失败: ' + data.error);
+        }
+    } catch (error) {
+        alert('错误: ' + error.message);
+    } finally {
+        this.disabled = false;
+        this.textContent = '生成样本数据 (100条)';
+    }
+});
+
+document.getElementById('analyzeBtn').addEventListener('click', async function() {
+    this.disabled = true;
+    this.textContent = '分析中...';
+    
+    try {
+        const response = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            displayResults(data.results);
+        } else {
+            alert('分析失败: ' + data.error);
+        }
+    } catch (error) {
+        alert('错误: ' + error.message);
+    } finally {
+        this.disabled = false;
+        this.textContent = '开始分析';
+    }
+});
+
+function displayResults(results) {
+    const container = document.getElementById('analysisResults');
+    
+    let html = '<div class="analysis-grid">';
+    
+    // Frequency
+    if (results.frequency) {
+        html += '<div class="analysis-section">';
+        html += '<h3>频率分析</h3>';
+        html += '<div class="number-grid">';
+        const topFreq = Object.entries(results.frequency).slice(0, 10);
+        topFreq.forEach(([num, freq]) => {
+            html += `<div class="number-item"><span class="number">${num}</span><span class="freq">${freq}次</span></div>`;
+        });
+        html += '</div></div>';
+    }
+    
+    // Hot numbers
+    if (results.hot_numbers) {
+        html += '<div class="analysis-section">';
+        html += '<h3>热号</h3>';
+        html += '<div class="number-list">';
+        results.hot_numbers.forEach(num => {
+            html += `<span class="badge badge-hot">${num}</span>`;
+        });
+        html += '</div></div>';
+    }
+    
+    // Cold numbers
+    if (results.cold_numbers) {
+        html += '<div class="analysis-section">';
+        html += '<h3>冷号</h3>';
+        html += '<div class="number-list">';
+        results.cold_numbers.forEach(num => {
+            html += `<span class="badge badge-cold">${num}</span>`;
+        });
+        html += '</div></div>';
+    }
+    
+    // Patterns
+    if (results.patterns) {
+        html += '<div class="analysis-section">';
+        html += '<h3>模式分析</h3>';
+        html += '<ul>';
+        for (const [key, value] of Object.entries(results.patterns)) {
+            html += `<li><strong>${key}:</strong> ${JSON.stringify(value)}</li>`;
+        }
+        html += '</ul></div>';
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+</script>
+{% endblock %}

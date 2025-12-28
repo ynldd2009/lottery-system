@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}首页 - 彩票分析预测系统{% endblock %}
+
+{% block content %}
+<div class="hero">
+    <h1>🎰 彩票分析预测系统</h1>
+    <p class="subtitle">支持电脑和手机访问的智能彩票分析平台</p>
+</div>
+
+<!-- Real-time Information Section -->
+<div class="info-section home-realtime">
+    <div class="realtime-info">
+        <p id="current-time" class="time-display">🕐 当前时间: 加载中...</p>
+        <p id="deadline-info" class="deadline-display">⏰ 购买截止: 加载中...</p>
+    </div>
+    <div id="announcement" class="announcement-banner">
+        🎯 欢迎使用彩票分析系统
+    </div>
+</div>
+
+<!-- Latest Results Section -->
+<div class="info-section">
+    <h2>最新开奖信息</h2>
+    <div class="latest-results">
+        <table id="results-table" class="table">
+            <thead>
+                <tr>
+                    <th>彩票类型</th>
+                    <th>期号</th>
+                    <th>开奖日期</th>
+                    <th>开奖号码</th>
+                    <th>状态</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="5" style="text-align: center;">加载中...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="features-grid">
+    <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <h3>数据分析</h3>
+        <p>频率分析、冷热号码、模式检测</p>
+        <a href="/analysis" class="btn btn-primary">开始分析</a>
+    </div>
+
+    <div class="feature-card">
+        <div class="feature-icon">🔮</div>
+        <h3>智能预测</h3>
+        <p>7种统计模型，集成预测算法</p>
+        <a href="/prediction" class="btn btn-primary">生成预测</a>
+    </div>
+
+    <div class="feature-card">
+        <div class="feature-icon">💾</div>
+        <h3>数据管理</h3>
+        <p>导入导出CSV、JSON、Excel</p>
+        <a href="/data" class="btn btn-primary">管理数据</a>
+    </div>
+
+    <div class="feature-card">
+        <div class="feature-icon">🛠️</div>
+        <h3>实用工具</h3>
+        <p>密码生成、记录管理</p>
+        <a href="/utilities" class="btn btn-primary">使用工具</a>
+    </div>
+</div>
+
+<div class="info-section">
+    <h2>支持的彩票类型</h2>
+    <div class="lottery-types">
+        {% for lottery_type in lottery_types %}
+        <span class="badge">{{ lottery_type }}</span>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="info-section">
+    <h2>预测模型</h2>
+    <div class="models-list">
+        <ul>
+            <li><strong>频率分析</strong> - 基于历史出现频率</li>
+            <li><strong>冷热号码</strong> - 识别热号和冷号</li>
+            <li><strong>模式平衡</strong> - 奇偶、高低平衡</li>
+            <li><strong>加权频率</strong> - 近期数据加权</li>
+            <li><strong>间隔分析</strong> - 预测"到期"号码</li>
+            <li><strong>移动平均</strong> - 趋势分析</li>
+            <li><strong>周期模式</strong> - 周期检测</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+// Update homepage info every second
+function updateHomepageInfo() {
+    fetch('/api/homepage-info')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update time
+                document.getElementById('current-time').textContent = `🕐 当前时间: ${data.current_time}`;
+                
+                // Update deadline with countdown
+                const deadlineDiv = document.getElementById('deadline-info');
+                if (data.deadline_info && data.deadline_info.length > 0) {
+                    let deadlineHTML = '⏰ 投注倒计时：';
+                    data.deadline_info.forEach((item, index) => {
+                        if (index > 0) deadlineHTML += ' | ';
+                        const style = item.urgent ? 'color: red; font-weight: bold;' : '';
+                        deadlineHTML += `<span style="${style}">${item.text} (${item.time}) 还剩 ${item.countdown}</span>`;
+                    });
+                    deadlineDiv.innerHTML = deadlineHTML;
+                } else {
+                    deadlineDiv.textContent = '⏰ 今日彩票销售已截止';
+                }
+                
+                // Update announcement
+                document.getElementById('announcement').textContent = data.announcement;
+                
+                // Update results table
+                const tbody = document.querySelector('#results-table tbody');
+                tbody.innerHTML = '';
+                data.latest_results.forEach(result => {
+                    const row = tbody.insertRow();
+                    row.insertCell(0).textContent = result.lottery;
+                    row.insertCell(1).textContent = result.period || '';
+                    row.insertCell(2).textContent = result.date;
+                    row.insertCell(3).textContent = result.numbers;
+                    row.insertCell(4).textContent = result.status;
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error updating homepage info:', error);
+        });
+}
+
+// Initial update
+updateHomepageInfo();
+
+// Update every second
+setInterval(updateHomepageInfo, 1000);
+</script>
+
+<style>
+.home-realtime {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+}
+
+.realtime-info {
+    text-align: center;
+}
+
+.time-display, .deadline-display {
+    font-size: 1.1em;
+    margin: 10px 0;
+}
+
+.announcement-banner {
+    background: #ffe4b5;
+    color: #333;
+    padding: 15px;
+    border-radius: 5px;
+    text-align: center;
+    margin-top: 15px;
+    font-weight: bold;
+}
+
+.latest-results {
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+.table th, .table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.table th {
+    background-color: #f4f4f4;
+    font-weight: bold;
+}
+
+.table tbody tr:hover {
+    background-color: #f9f9f9;
+}
+
+@media (max-width: 768px) {
+    .time-display, .deadline-display {
+        font-size: 0.95em;
+    }
+    
+    .table th, .table td {
+        padding: 8px;
+        font-size: 0.9em;
+    }
+}
+</style>
+
+{% endblock %}
