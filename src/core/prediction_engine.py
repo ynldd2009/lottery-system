@@ -11,6 +11,15 @@ from collections import Counter
 from .data_analyzer import DataAnalyzer
 from ..config.lottery_types import LotteryType, get_lottery_type
 
+# Constants for prediction algorithms
+DEFAULT_CONFIDENCE_THRESHOLD = 0.6
+DEFAULT_MIN_DATA_POINTS = 10
+DEFAULT_MOVING_AVERAGE_WINDOW = 10
+WEIGHTED_FREQUENCY_DECAY = 0.3
+DEFAULT_HOT_THRESHOLD = 0.7
+DEFAULT_COLD_THRESHOLD = 0.3
+PATTERN_ANALYSIS_WINDOW = 5
+
 
 class PredictionEngine:
     """Generates predictions for lottery numbers using various algorithms."""
@@ -27,7 +36,7 @@ class PredictionEngine:
         self.lottery_type = get_lottery_type(lottery_type)
         self.analyzer = DataAnalyzer(config)
         self.algorithms = self.config.get('prediction_algorithms', ['frequency', 'hot_cold', 'pattern'])
-        self.confidence_threshold = self.config.get('confidence_threshold', 0.6)
+        self.confidence_threshold = self.config.get('confidence_threshold', DEFAULT_CONFIDENCE_THRESHOLD)
     
     def load_historical_data(self, data) -> None:
         """
@@ -37,6 +46,26 @@ class PredictionEngine:
             data: DataFrame containing historical lottery draws.
         """
         self.analyzer.load_data(data)
+    
+    def _fill_predicted_numbers(self, predicted: List[int], count: int, 
+                                number_range: Tuple[int, int]) -> List[int]:
+        """
+        Helper method to fill predicted numbers to required count.
+        
+        Args:
+            predicted: Current list of predicted numbers.
+            count: Required count of numbers.
+            number_range: Range of valid lottery numbers (min, max).
+            
+        Returns:
+            List of predicted numbers with required count.
+        """
+        if len(predicted) < count:
+            available = set(range(number_range[0], number_range[1] + 1)) - set(predicted)
+            if available:
+                additional = random.sample(list(available), min(count - len(predicted), len(available)))
+                predicted.extend(additional)
+        return sorted(predicted[:count])
     
     def predict_by_frequency(self, count: int = 6, number_range: Tuple[int, int] = (1, 49)) -> List[int]:
         """
@@ -59,13 +88,8 @@ class PredictionEngine:
         sorted_numbers = sorted(frequency.items(), key=lambda x: x[1], reverse=True)
         predicted = [num for num, _ in sorted_numbers[:count]]
         
-        # If we don't have enough numbers, fill with random ones
-        if len(predicted) < count:
-            available = set(range(number_range[0], number_range[1] + 1)) - set(predicted)
-            additional = random.sample(list(available), count - len(predicted))
-            predicted.extend(additional)
-        
-        return sorted(predicted[:count])
+        # Fill if needed
+        return self._fill_predicted_numbers(predicted, count, number_range)
     
     def predict_by_hot_numbers(self, count: int = 6, number_range: Tuple[int, int] = (1, 49)) -> List[int]:
         """
@@ -88,11 +112,9 @@ class PredictionEngine:
             predicted = random.sample(hot_numbers, count)
         else:
             predicted = hot_numbers.copy()
-            available = set(range(number_range[0], number_range[1] + 1)) - set(predicted)
-            additional = random.sample(list(available), count - len(predicted))
-            predicted.extend(additional)
         
-        return sorted(predicted)
+        # Fill if needed
+        return self._fill_predicted_numbers(predicted, count, number_range)
     
     def predict_by_pattern(self, count: int = 6, number_range: Tuple[int, int] = (1, 49)) -> List[int]:
         """
@@ -151,12 +173,7 @@ class PredictionEngine:
         predicted.extend(selected_even)
         
         # Fill if needed
-        if len(predicted) < count:
-            available = set(all_numbers) - set(predicted)
-            additional = random.sample(list(available), count - len(predicted))
-            predicted.extend(additional)
-        
-        return sorted(predicted[:count])
+        return self._fill_predicted_numbers(predicted, count, number_range)
     
     def predict_by_weighted_frequency(self, count: int = 6, number_range: Tuple[int, int] = (1, 49)) -> List[int]:
         """
@@ -192,12 +209,7 @@ class PredictionEngine:
         predicted = [num for num, _ in sorted_numbers[:count]]
         
         # Fill if needed
-        if len(predicted) < count:
-            available = set(range(number_range[0], number_range[1] + 1)) - set(predicted)
-            additional = random.sample(list(available), count - len(predicted))
-            predicted.extend(additional)
-        
-        return sorted(predicted[:count])
+        return self._fill_predicted_numbers(predicted, count, number_range)
     
     def predict_by_gap_analysis(self, count: int = 6, number_range: Tuple[int, int] = (1, 49)) -> List[int]:
         """
@@ -239,12 +251,7 @@ class PredictionEngine:
         predicted = random.sample(top_due, min(count, len(top_due)))
         
         # Fill if needed
-        if len(predicted) < count:
-            available = set(all_numbers) - set(predicted)
-            additional = random.sample(list(available), count - len(predicted))
-            predicted.extend(additional)
-        
-        return sorted(predicted[:count])
+        return self._fill_predicted_numbers(predicted, count, number_range)
     
     def predict_by_moving_average(self, count: int = 6, number_range: Tuple[int, int] = (1, 49), 
                                   window: int = 10) -> List[int]:
@@ -280,12 +287,7 @@ class PredictionEngine:
         predicted = [num for num, _ in sorted_numbers[:count]]
         
         # Fill if needed
-        if len(predicted) < count:
-            available = set(range(number_range[0], number_range[1] + 1)) - set(predicted)
-            additional = random.sample(list(available), count - len(predicted))
-            predicted.extend(additional)
-        
-        return sorted(predicted[:count])
+        return self._fill_predicted_numbers(predicted, count, number_range)
     
     def predict_by_cyclic_pattern(self, count: int = 6, number_range: Tuple[int, int] = (1, 49)) -> List[int]:
         """
@@ -408,7 +410,7 @@ class PredictionEngine:
         
         # Calculate confidence based on data availability and consistency
         data_points = len(self.analyzer.data)
-        min_data = self.config.get('min_data_points', 10)
+        min_data = self.config.get('min_data_points', DEFAULT_MIN_DATA_POINTS)
         
         confidence = min(1.0, data_points / (min_data * 5))  # Scale confidence
         
@@ -497,7 +499,7 @@ class PredictionEngine:
         return {
             'lottery_type': '大乐透后区',
             'bonus_numbers': bonus_pred['recommended'][:2],
-            'formatted': f"后区: {bonus_pred['recommended'][:2]}",
+            'formatted': f"后区: {', '.join(map(str, bonus_pred['recommended'][:2]))}",
             'confidence': bonus_pred['confidence'],
             'algorithms_used': bonus_pred['algorithms_used'],
             'description': '大乐透后区专用预测 (2个号码, 1-12)'

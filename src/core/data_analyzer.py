@@ -110,39 +110,65 @@ class DataAnalyzer:
             'sum_range': (0, 0)
         }
         
+        all_draws = self._extract_draws_from_data(recent_data, number_column)
+        
+        if not all_draws:
+            return patterns
+        
+        # Count consecutive numbers
+        patterns['consecutive_numbers'] = self._count_consecutive_numbers(all_draws)
+        
+        # Calculate ratios
+        all_nums = [num for draw in all_draws for num in draw]
+        if all_nums:
+            patterns['odd_even_ratio'] = self._calculate_odd_even_ratio(all_nums)
+            patterns['high_low_ratio'] = self._calculate_high_low_ratio(all_nums)
+            patterns['sum_range'] = self._calculate_sum_range(all_draws)
+        
+        return patterns
+    
+    def _extract_draws_from_data(self, data, number_column: str) -> List[List[int]]:
+        """Extract and parse draw numbers from data."""
         all_draws = []
-        for numbers in recent_data[number_column]:
+        for numbers in data[number_column]:
             if isinstance(numbers, (list, tuple)):
                 all_draws.append(sorted(numbers))
             elif isinstance(numbers, str):
                 nums = sorted([int(n.strip()) for n in numbers.split(',') if n.strip().isdigit()])
                 all_draws.append(nums)
-        
-        # Count consecutive numbers
+        return all_draws
+    
+    def _count_consecutive_numbers(self, draws: List[List[int]]) -> int:
+        """Count consecutive numbers in draws."""
         consecutive_count = 0
-        for draw in all_draws:
+        for draw in draws:
             for i in range(len(draw) - 1):
                 if draw[i+1] - draw[i] == 1:
                     consecutive_count += 1
-        patterns['consecutive_numbers'] = consecutive_count
-        
-        # Calculate odd/even ratio
-        all_nums = [num for draw in all_draws for num in draw]
-        if all_nums:
-            odd_count = sum(1 for n in all_nums if n % 2 == 1)
-            patterns['odd_even_ratio'] = odd_count / len(all_nums)
-            
-            # Calculate high/low ratio (assuming max number is around 49)
-            max_num = max(all_nums) if all_nums else 49
-            mid_point = max_num / 2
-            high_count = sum(1 for n in all_nums if n > mid_point)
-            patterns['high_low_ratio'] = high_count / len(all_nums)
-            
-            # Sum range
-            draw_sums = [sum(draw) for draw in all_draws]
-            patterns['sum_range'] = (min(draw_sums), max(draw_sums))
-        
-        return patterns
+        return consecutive_count
+    
+    def _calculate_odd_even_ratio(self, numbers: List[int]) -> float:
+        """Calculate ratio of odd numbers."""
+        if not numbers:
+            return 0.0
+        odd_count = sum(1 for n in numbers if n % 2 == 1)
+        return odd_count / len(numbers)
+    
+    def _calculate_high_low_ratio(self, numbers: List[int]) -> float:
+        """Calculate ratio of high numbers (above midpoint)."""
+        if not numbers:
+            return 0.0
+        max_num = max(numbers)
+        mid_point = max_num / 2
+        high_count = sum(1 for n in numbers if n > mid_point)
+        return high_count / len(numbers)
+    
+    def _calculate_sum_range(self, draws: List[List[int]]) -> Tuple[int, int]:
+        """Calculate min and max sum of draws."""
+        if not draws:
+            return (0, 0)
+        draw_sums = [sum(draw) for draw in draws]
+        return (min(draw_sums), max(draw_sums))
     
     def get_statistics_summary(self, number_column: str = 'numbers') -> Dict[str, any]:
         """

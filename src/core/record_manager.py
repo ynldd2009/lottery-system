@@ -4,6 +4,7 @@ Manages lottery prediction records (add, edit, remove, share).
 """
 
 import json
+import logging
 import pandas as pd
 from pathlib import Path
 from typing import List, Dict, Optional
@@ -13,18 +14,20 @@ from datetime import datetime
 class RecordManager:
     """Manages lottery prediction and analysis records."""
     
-    def __init__(self, storage_path: str = None):
+    def __init__(self, storage_path: str = None, logger: Optional[logging.Logger] = None):
         """
         Initialize record manager.
         
         Args:
             storage_path: Path to store records. If None, uses default.
+            logger: Optional logger instance. If None, creates a default logger.
         """
         if storage_path is None:
             storage_path = Path.home() / ".lottery_system" / "records.json"
         
         self.storage_path = Path(storage_path)
         self.storage_path.parent.mkdir(parents=True, exist_ok=True)
+        self.logger = logger or logging.getLogger(__name__)
         
         self.records: List[Dict] = []
         self.load_records()
@@ -35,10 +38,15 @@ class RecordManager:
             if self.storage_path.exists():
                 with open(self.storage_path, 'r', encoding='utf-8') as f:
                     self.records = json.load(f)
+                self.logger.info(f"Loaded {len(self.records)} records from {self.storage_path}")
             else:
                 self.records = []
+                self.logger.info("No existing records file found, starting with empty records")
+        except json.JSONDecodeError as e:
+            self.logger.error(f"Invalid JSON in records file: {e}")
+            self.records = []
         except Exception as e:
-            print(f"Error loading records: {e}")
+            self.logger.error(f"Error loading records: {e}", exc_info=True)
             self.records = []
     
     def save_records(self) -> None:
@@ -46,8 +54,9 @@ class RecordManager:
         try:
             with open(self.storage_path, 'w', encoding='utf-8') as f:
                 json.dump(self.records, f, indent=2)
+            self.logger.debug(f"Saved {len(self.records)} records to {self.storage_path}")
         except Exception as e:
-            print(f"Error saving records: {e}")
+            self.logger.error(f"Error saving records: {e}", exc_info=True)
     
     def add_record(self, record: Dict) -> str:
         """
@@ -66,6 +75,7 @@ class RecordManager:
         
         self.records.append(record)
         self.save_records()
+        self.logger.info(f"Added new record: {record_id}")
         
         return record_id
     
@@ -182,9 +192,10 @@ class RecordManager:
             with open(filepath, 'w', encoding='utf-8') as f:
                 json.dump(records_to_export, f, indent=2)
             
+            self.logger.info(f"Exported {len(records_to_export)} records to {filepath}")
             return True
         except Exception as e:
-            print(f"Error exporting records: {e}")
+            self.logger.error(f"Error exporting records to {filepath}: {e}", exc_info=True)
             return False
     
     def import_from_json(self, filepath: str, merge: bool = True) -> bool:
@@ -212,9 +223,16 @@ class RecordManager:
                 self.records = imported_records
             
             self.save_records()
+            self.logger.info(f"Imported {len(imported_records)} records from {filepath}")
             return True
+        except FileNotFoundError:
+            self.logger.error(f"Import file not found: {filepath}")
+            return False
+        except json.JSONDecodeError as e:
+            self.logger.error(f"Invalid JSON in import file {filepath}: {e}")
+            return False
         except Exception as e:
-            print(f"Error importing records: {e}")
+            self.logger.error(f"Error importing records from {filepath}: {e}", exc_info=True)
             return False
     
     def share_record(self, record_id: str, format: str = 'json') -> Optional[str]:
