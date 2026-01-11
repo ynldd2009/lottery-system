@@ -8,6 +8,7 @@ import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend for cross-platform support
 import pandas as pd
 import numpy as np
+import logging
 from typing import Optional, Dict, List
 from pathlib import Path
 
@@ -15,16 +16,22 @@ from pathlib import Path
 class DataVisualizer:
     """Creates visualizations for lottery data and statistics."""
     
-    def __init__(self, style: str = 'default'):
+    def __init__(self, style: str = 'default', logger: Optional[logging.Logger] = None):
         """
         Initialize data visualizer.
         
         Args:
             style: Matplotlib style to use.
+            logger: Optional logger instance. If None, creates a default logger.
         """
         self.style = style
-        if style != 'default':
-            plt.style.use(style)
+        self.logger = logger or logging.getLogger(__name__)
+        
+        try:
+            if style != 'default':
+                plt.style.use(style)
+        except Exception as e:
+            self.logger.warning(f"Failed to set matplotlib style '{style}': {e}")
     
     def plot_frequency_chart(self, frequency_data: Dict[int, int], 
                             title: str = "Number Frequency Analysis",
@@ -39,30 +46,40 @@ class DataVisualizer:
             
         Returns:
             Path to saved chart or empty string if not saved.
+            
+        Raises:
+            ValueError: If frequency_data is empty or invalid.
         """
         if not frequency_data:
-            return ""
+            raise ValueError("Frequency data cannot be empty")
         
-        fig, ax = plt.subplots(figsize=(12, 6))
-        
-        numbers = sorted(frequency_data.keys())
-        frequencies = [frequency_data[n] for n in numbers]
-        
-        ax.bar(numbers, frequencies, color='steelblue', alpha=0.7)
-        ax.set_xlabel('Number', fontsize=12)
-        ax.set_ylabel('Frequency', fontsize=12)
-        ax.set_title(title, fontsize=14, fontweight='bold')
-        ax.grid(axis='y', alpha=0.3)
-        
-        plt.tight_layout()
-        
-        if save_path:
-            plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        try:
+            fig, ax = plt.subplots(figsize=(12, 6))
+            
+            numbers = sorted(frequency_data.keys())
+            frequencies = [frequency_data[n] for n in numbers]
+            
+            ax.bar(numbers, frequencies, color='steelblue', alpha=0.7)
+            ax.set_xlabel('Number', fontsize=12)
+            ax.set_ylabel('Frequency', fontsize=12)
+            ax.set_title(title, fontsize=14, fontweight='bold')
+            ax.grid(axis='y', alpha=0.3)
+            
+            plt.tight_layout()
+            
+            if save_path:
+                Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+                plt.savefig(save_path, dpi=150, bbox_inches='tight')
+                plt.close()
+                self.logger.info(f"Frequency chart saved to {save_path}")
+                return save_path
+            
             plt.close()
-            return save_path
-        
-        plt.close()
-        return ""
+            return ""
+        except Exception as e:
+            self.logger.error(f"Error creating frequency chart: {e}", exc_info=True)
+            plt.close('all')
+            return ""
     
     def plot_hot_cold_numbers(self, hot_numbers: List[int], cold_numbers: List[int],
                              title: str = "Hot vs Cold Numbers",

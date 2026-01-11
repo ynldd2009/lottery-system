@@ -4,21 +4,25 @@ Handles loading and managing system configuration from JSON files.
 """
 
 import json
+import logging
 import os
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 
 class ConfigManager:
     """Manages application configuration settings."""
     
-    def __init__(self, config_path: str = None):
+    def __init__(self, config_path: str = None, logger: Optional[logging.Logger] = None):
         """
         Initialize the configuration manager.
         
         Args:
             config_path: Path to the configuration file. If None, uses default path.
+            logger: Optional logger instance. If None, creates a default logger.
         """
+        self.logger = logger or logging.getLogger(__name__)
+        
         if config_path is None:
             # Default to config.json in the project root
             project_root = Path(__file__).parent.parent.parent
@@ -34,21 +38,28 @@ class ConfigManager:
             if self.config_path.exists():
                 with open(self.config_path, 'r', encoding='utf-8') as f:
                     self.config = json.load(f)
+                self.logger.info(f"Configuration loaded from {self.config_path}")
             else:
                 # Create default configuration if file doesn't exist
                 self.config = self._get_default_config()
                 self.save_config()
+                self.logger.info(f"Created default configuration at {self.config_path}")
+        except json.JSONDecodeError as e:
+            self.logger.error(f"Invalid JSON in configuration file: {e}")
+            self.config = self._get_default_config()
         except Exception as e:
-            print(f"Error loading configuration: {e}")
+            self.logger.error(f"Error loading configuration: {e}", exc_info=True)
             self.config = self._get_default_config()
     
     def save_config(self) -> None:
         """Save current configuration to JSON file."""
         try:
+            self.config_path.parent.mkdir(parents=True, exist_ok=True)
             with open(self.config_path, 'w', encoding='utf-8') as f:
                 json.dump(self.config, f, indent=2)
+            self.logger.debug(f"Configuration saved to {self.config_path}")
         except Exception as e:
-            print(f"Error saving configuration: {e}")
+            self.logger.error(f"Error saving configuration: {e}", exc_info=True)
     
     def get(self, key: str, default: Any = None) -> Any:
         """
