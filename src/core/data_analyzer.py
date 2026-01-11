@@ -8,6 +8,7 @@ import pandas as pd
 from typing import Dict, List, Tuple, Optional
 from collections import Counter
 from datetime import datetime, timedelta
+from functools import lru_cache
 
 
 class DataAnalyzer:
@@ -23,6 +24,7 @@ class DataAnalyzer:
         self.config = config or {}
         self.data = pd.DataFrame()
         self.statistics = {}
+        self._cache = {}  # Simple cache for computed results
     
     def load_data(self, data: pd.DataFrame) -> None:
         """
@@ -30,10 +32,22 @@ class DataAnalyzer:
         
         Args:
             data: DataFrame containing lottery draw data.
+            
+        Raises:
+            ValueError: If data is not a DataFrame or is empty.
         """
+        if not isinstance(data, pd.DataFrame):
+            raise ValueError("Data must be a pandas DataFrame")
+        
+        if data.empty:
+            raise ValueError("Data cannot be empty")
+        
         self.data = data.copy()
         if 'date' in self.data.columns:
             self.data['date'] = pd.to_datetime(self.data['date'])
+        
+        # Clear cache when new data is loaded
+        self._cache.clear()
     
     def get_frequency_analysis(self, number_column: str = 'numbers') -> Dict[int, int]:
         """
@@ -45,6 +59,11 @@ class DataAnalyzer:
         Returns:
             Dictionary mapping number to frequency count.
         """
+        # Check cache first
+        cache_key = f"frequency_{number_column}_{len(self.data)}"
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+        
         if self.data.empty or number_column not in self.data.columns:
             return {}
         
@@ -57,7 +76,9 @@ class DataAnalyzer:
                 nums = [int(n.strip()) for n in numbers.split(',') if n.strip().isdigit()]
                 all_numbers.extend(nums)
         
-        return dict(Counter(all_numbers))
+        result = dict(Counter(all_numbers))
+        self._cache[cache_key] = result
+        return result
     
     def get_hot_cold_numbers(self, number_column: str = 'numbers', 
                             hot_threshold: float = 0.7, 
@@ -72,7 +93,16 @@ class DataAnalyzer:
             
         Returns:
             Tuple of (hot_numbers, cold_numbers).
+            
+        Raises:
+            ValueError: If thresholds are not between 0 and 1.
         """
+        if not (0 <= hot_threshold <= 1) or not (0 <= cold_threshold <= 1):
+            raise ValueError("Thresholds must be between 0 and 1")
+        
+        if hot_threshold <= cold_threshold:
+            raise ValueError("Hot threshold must be greater than cold threshold")
+        
         frequency = self.get_frequency_analysis(number_column)
         
         if not frequency:
@@ -98,7 +128,13 @@ class DataAnalyzer:
             
         Returns:
             Dictionary with pattern statistics.
+            
+        Raises:
+            ValueError: If window is less than 1.
         """
+        if window < 1:
+            raise ValueError("Window must be at least 1")
+        
         if self.data.empty or len(self.data) < window:
             return {}
         

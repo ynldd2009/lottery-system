@@ -35,7 +35,13 @@ class DataHandler:
             
         Returns:
             DataFrame with imported data.
+            
+        Raises:
+            ValueError: If filepath is empty or invalid.
         """
+        if not filepath or not isinstance(filepath, str):
+            raise ValueError("Filepath must be a non-empty string")
+        
         try:
             df = pd.read_csv(filepath)
             
@@ -68,7 +74,13 @@ class DataHandler:
             
         Returns:
             DataFrame with imported data.
+            
+        Raises:
+            ValueError: If filepath is empty or invalid.
         """
+        if not filepath or not isinstance(filepath, str):
+            raise ValueError("Filepath must be a non-empty string")
+        
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
                 data = json.load(f)
@@ -261,7 +273,22 @@ class DataHandler:
             
         Returns:
             DataFrame with sample lottery data.
+            
+        Raises:
+            ValueError: If parameters are invalid.
         """
+        if num_draws < 1:
+            raise ValueError("num_draws must be at least 1")
+        
+        if num_count < 1:
+            raise ValueError("num_count must be at least 1")
+        
+        if num_range[0] >= num_range[1]:
+            raise ValueError("Invalid num_range: min must be less than max")
+        
+        if num_count > (num_range[1] - num_range[0] + 1):
+            raise ValueError("num_count cannot exceed the range of available numbers")
+        
         import random
         
         data = []

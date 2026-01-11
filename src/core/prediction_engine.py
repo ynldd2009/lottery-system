@@ -59,7 +59,16 @@ class PredictionEngine:
             
         Returns:
             List of predicted numbers with required count.
+            
+        Raises:
+            ValueError: If count or number_range are invalid.
         """
+        if count < 1:
+            raise ValueError("Count must be at least 1")
+        
+        if number_range[0] >= number_range[1]:
+            raise ValueError("Invalid number range: min must be less than max")
+        
         if len(predicted) < count:
             available = set(range(number_range[0], number_range[1] + 1)) - set(predicted)
             if available:
@@ -77,7 +86,16 @@ class PredictionEngine:
             
         Returns:
             List of predicted numbers.
+            
+        Raises:
+            ValueError: If count or number_range are invalid.
         """
+        if count < 1:
+            raise ValueError("Count must be at least 1")
+        
+        if number_range[0] >= number_range[1]:
+            raise ValueError("Invalid number range: min must be less than max")
+        
         frequency = self.analyzer.get_frequency_analysis()
         
         if not frequency:
