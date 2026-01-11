@@ -83,7 +83,7 @@ class PasswordGenerator:
         # Fill the rest with random characters from the full set
         remaining_length = length - len(password)
         if remaining_length > 0:
-            password.extend(secrets.choice(chars) for _ in range(remaining_length))
+            password.extend([secrets.choice(chars) for _ in range(remaining_length)])
         
         # Shuffle to avoid predictable patterns using secrets
         # Convert to list for shuffling

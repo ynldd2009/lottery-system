@@ -514,10 +514,20 @@ class PredictionEngine:
         # Use multiple algorithms specifically for back zone
         bonus_pred = self.generate_prediction_with_confidence(count=2, number_range=(1, 12))
         
+        # Ensure we have at least 2 numbers
+        recommended = bonus_pred.get('recommended', [])
+        if len(recommended) < 2:
+            # Fill with random if needed
+            remaining = 2 - len(recommended)
+            available = set(range(1, 13)) - set(recommended)
+            if available:
+                import random
+                recommended.extend(random.sample(list(available), min(remaining, len(available))))
+        
         return {
             'lottery_type': '大乐透后区',
-            'bonus_numbers': bonus_pred['recommended'][:2],
-            'formatted': f"后区: {', '.join(map(str, bonus_pred['recommended'][:2]))}",
+            'bonus_numbers': recommended[:2],
+            'formatted': f"后区: {', '.join(map(str, recommended[:2]))}",
             'confidence': bonus_pred['confidence'],
             'algorithms_used': bonus_pred['algorithms_used'],
             'description': '大乐透后区专用预测 (2个号码, 1-12)'

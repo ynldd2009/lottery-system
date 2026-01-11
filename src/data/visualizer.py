@@ -70,15 +70,16 @@ class DataVisualizer:
             if save_path:
                 Path(save_path).parent.mkdir(parents=True, exist_ok=True)
                 plt.savefig(save_path, dpi=150, bbox_inches='tight')
-                plt.close()
+                plt.close(fig)
                 self.logger.info(f"Frequency chart saved to {save_path}")
                 return save_path
             
-            plt.close()
+            plt.close(fig)
             return ""
         except Exception as e:
             self.logger.error(f"Error creating frequency chart: {e}", exc_info=True)
-            plt.close('all')
+            if 'fig' in locals():
+                plt.close(fig)
             return ""
     
     def plot_hot_cold_numbers(self, hot_numbers: List[int], cold_numbers: List[int],
