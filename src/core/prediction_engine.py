@@ -517,12 +517,13 @@ class PredictionEngine:
         # Ensure we have at least 2 numbers
         recommended = bonus_pred.get('recommended', [])
         if len(recommended) < 2:
-            # Fill with random if needed
+            # Fill with random if needed using secrets for security
+            import secrets
             remaining = 2 - len(recommended)
-            available = set(range(1, 13)) - set(recommended)
+            available = list(set(range(1, 13)) - set(recommended))
             if available:
-                import random
-                recommended.extend(random.sample(list(available), min(remaining, len(available))))
+                additional = [secrets.choice(available) for _ in range(min(remaining, len(available)))]
+                recommended.extend(additional)
         
         return {
             'lottery_type': '大乐透后区',

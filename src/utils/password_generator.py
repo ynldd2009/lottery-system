@@ -85,14 +85,12 @@ class PasswordGenerator:
         if remaining_length > 0:
             password.extend([secrets.choice(chars) for _ in range(remaining_length)])
         
-        # Shuffle to avoid predictable patterns using secrets
-        # Convert to list for shuffling
-        password_list = list(password)
-        for i in range(len(password_list) - 1, 0, -1):
+        # Shuffle to avoid predictable patterns using Fisher-Yates with secrets
+        for i in range(len(password) - 1, 0, -1):
             j = secrets.randbelow(i + 1)
-            password_list[i], password_list[j] = password_list[j], password_list[i]
+            password[i], password[j] = password[j], password[i]
         
-        return ''.join(password_list)
+        return ''.join(password)
     
     def generate_multiple(self, count: int = 5, length: Optional[int] = None) -> list:
         """
