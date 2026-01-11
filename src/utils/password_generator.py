@@ -1,9 +1,9 @@
 """
 Password Generator Module
-Generates strong, secure passwords automatically.
+Generates strong, secure passwords automatically using cryptographically strong random sources.
 """
 
-import random
+import secrets
 import string
 from typing import Optional
 
@@ -28,13 +28,16 @@ class PasswordGenerator:
     
     def generate(self, length: Optional[int] = None) -> str:
         """
-        Generate a strong password.
+        Generate a strong password using cryptographically strong random source.
         
         Args:
             length: Password length. If None, uses configured default.
             
         Returns:
             Generated password string.
+            
+        Raises:
+            ValueError: If length is less than minimum required.
         """
         if length is None:
             length = self.length
@@ -48,7 +51,7 @@ class PasswordGenerator:
         ])
         
         if length < min_length:
-            length = min_length
+            raise ValueError(f"Password length must be at least {min_length} to meet all requirements")
         
         # Build character set based on configuration
         chars = string.ascii_lowercase
@@ -66,24 +69,26 @@ class PasswordGenerator:
         password = []
         
         if self.include_uppercase:
-            password.append(random.choice(string.ascii_uppercase))
+            password.append(secrets.choice(string.ascii_uppercase))
         
         if self.include_numbers:
-            password.append(random.choice(string.digits))
+            password.append(secrets.choice(string.digits))
         
         if self.include_special:
-            password.append(random.choice(string.punctuation))
+            password.append(secrets.choice(string.punctuation))
         
         # Always include at least one lowercase letter
-        password.append(random.choice(string.ascii_lowercase))
+        password.append(secrets.choice(string.ascii_lowercase))
         
         # Fill the rest with random characters from the full set
         remaining_length = length - len(password)
         if remaining_length > 0:
-            password.extend(random.choices(chars, k=remaining_length))
+            password.extend([secrets.choice(chars) for _ in range(remaining_length)])
         
-        # Shuffle to avoid predictable patterns
-        random.shuffle(password)
+        # Shuffle to avoid predictable patterns using Fisher-Yates with secrets
+        for i in range(len(password) - 1, 0, -1):
+            j = secrets.randbelow(i + 1)
+            password[i], password[j] = password[j], password[i]
         
         return ''.join(password)
     
