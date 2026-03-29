@@ -5,6 +5,7 @@ Handles importing and exporting lottery data in various formats (CSV, JSON, Exce
 
 import pandas as pd
 import json
+import logging
 from pathlib import Path
 from typing import Optional, List, Dict
 from datetime import datetime
@@ -13,9 +14,14 @@ from datetime import datetime
 class DataHandler:
     """Handles data import/export operations for lottery data."""
     
-    def __init__(self):
-        """Initialize data handler."""
+    def __init__(self, logger: Optional[logging.Logger] = None):
+        """Initialize data handler.
+        
+        Args:
+            logger: Optional logger instance. If None, creates a default logger.
+        """
         self.data = pd.DataFrame()
+        self.logger = logger or logging.getLogger(__name__)
     
     def import_csv(self, filepath: str, date_column: str = 'date', 
                    number_column: str = 'numbers') -> pd.DataFrame:
@@ -29,7 +35,13 @@ class DataHandler:
             
         Returns:
             DataFrame with imported data.
+            
+        Raises:
+            ValueError: If filepath is empty or invalid.
         """
+        if not filepath or not isinstance(filepath, str):
+            raise ValueError("Filepath must be a non-empty string")
+        
         try:
             df = pd.read_csv(filepath)
             
@@ -43,8 +55,14 @@ class DataHandler:
             
             self.data = df
             return df
+        except FileNotFoundError as e:
+            self.logger.error(f"CSV file not found: {filepath}")
+            return pd.DataFrame()
+        except pd.errors.EmptyDataError as e:
+            self.logger.error(f"CSV file is empty: {filepath}")
+            return pd.DataFrame()
         except Exception as e:
-            print(f"Error importing CSV: {e}")
+            self.logger.error(f"Error importing CSV from {filepath}: {e}", exc_info=True)
             return pd.DataFrame()
     
     def import_json(self, filepath: str) -> pd.DataFrame:
@@ -56,7 +74,13 @@ class DataHandler:
             
         Returns:
             DataFrame with imported data.
+            
+        Raises:
+            ValueError: If filepath is empty or invalid.
         """
+        if not filepath or not isinstance(filepath, str):
+            raise ValueError("Filepath must be a non-empty string")
+        
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
                 data = json.load(f)
@@ -73,8 +97,14 @@ class DataHandler:
             
             self.data = df
             return df
+        except FileNotFoundError:
+            self.logger.error(f"JSON file not found: {filepath}")
+            return pd.DataFrame()
+        except json.JSONDecodeError as e:
+            self.logger.error(f"Invalid JSON format in {filepath}: {e}")
+            return pd.DataFrame()
         except Exception as e:
-            print(f"Error importing JSON: {e}")
+            self.logger.error(f"Error importing JSON from {filepath}: {e}", exc_info=True)
             return pd.DataFrame()
     
     def import_excel(self, filepath: str, sheet_name: str = 0) -> pd.DataFrame:
@@ -101,8 +131,11 @@ class DataHandler:
             
             self.data = df
             return df
+        except FileNotFoundError:
+            self.logger.error(f"Excel file not found: {filepath}")
+            return pd.DataFrame()
         except Exception as e:
-            print(f"Error importing Excel: {e}")
+            self.logger.error(f"Error importing Excel from {filepath}: {e}", exc_info=True)
             return pd.DataFrame()
     
     def export_csv(self, filepath: str, data: Optional[pd.DataFrame] = None, 
@@ -132,9 +165,10 @@ class DataHandler:
                     df_export[col] = df_export[col].apply(lambda x: ','.join(map(str, x)) if isinstance(x, (list, tuple)) else x)
             
             df_export.to_csv(filepath, index=include_index)
+            self.logger.info(f"Successfully exported data to CSV: {filepath}")
             return True
         except Exception as e:
-            print(f"Error exporting CSV: {e}")
+            self.logger.error(f"Error exporting CSV to {filepath}: {e}", exc_info=True)
             return False
     
     def export_json(self, filepath: str, data: Optional[pd.DataFrame] = None, 
@@ -154,7 +188,7 @@ class DataHandler:
             df = data if data is not None else self.data
             
             if df.empty:
-                print("No data to export")
+                self.logger.warning("No data to export")
                 return False
             
             # Convert datetime to string for JSON serialization
@@ -166,9 +200,10 @@ class DataHandler:
             with open(filepath, 'w', encoding='utf-8') as f:
                 json.dump(df_export.to_dict(orient=orient), f, indent=2)
             
+            self.logger.info(f"Successfully exported data to JSON: {filepath}")
             return True
         except Exception as e:
-            print(f"Error exporting JSON: {e}")
+            self.logger.error(f"Error exporting JSON to {filepath}: {e}", exc_info=True)
             return False
     
     def export_excel(self, filepath: str, data: Optional[pd.DataFrame] = None, 
@@ -188,7 +223,7 @@ class DataHandler:
             df = data if data is not None else self.data
             
             if df.empty:
-                print("No data to export")
+                self.logger.warning("No data to export")
                 return False
             
             # Convert lists to strings for Excel export
@@ -198,9 +233,10 @@ class DataHandler:
                     df_export[col] = df_export[col].apply(lambda x: ','.join(map(str, x)) if isinstance(x, (list, tuple)) else x)
             
             df_export.to_excel(filepath, sheet_name=sheet_name, index=False)
+            self.logger.info(f"Successfully exported data to Excel: {filepath}")
             return True
         except Exception as e:
-            print(f"Error exporting Excel: {e}")
+            self.logger.error(f"Error exporting Excel to {filepath}: {e}", exc_info=True)
             return False
     
     def _parse_numbers(self, value):
@@ -237,7 +273,22 @@ class DataHandler:
             
         Returns:
             DataFrame with sample lottery data.
+            
+        Raises:
+            ValueError: If parameters are invalid.
         """
+        if num_draws < 1:
+            raise ValueError("num_draws must be at least 1")
+        
+        if num_count < 1:
+            raise ValueError("num_count must be at least 1")
+        
+        if num_range[0] >= num_range[1]:
+            raise ValueError("Invalid num_range: min must be less than max")
+        
+        if num_count > (num_range[1] - num_range[0] + 1):
+            raise ValueError("num_count cannot exceed the range of available numbers")
+        
         import random
         
         data = []
