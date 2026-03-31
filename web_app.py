@@ -19,7 +19,7 @@ from src.core.data_analyzer import DataAnalyzer
 from src.core.prediction_engine import PredictionEngine
 from src.core.record_manager import RecordManager
 from src.data.data_handler import DataHandler
-from src.data.visualizer import Visualizer
+from src.data.visualizer import DataVisualizer
 from src.utils.password_generator import PasswordGenerator
 from src.utils.logger import setup_logger
 from src.utils.api_client import get_api_client, load_api_config
